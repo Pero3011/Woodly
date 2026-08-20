@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  /* Extracted from your image */
+  --color-primary: #6B4226;    /* Warm Brown */
+  --color-secondary: #FFF8F3;  /* Light Cream / Beige */
+  --color-tertiary: #1F5358;   /* Deep Teal / Slate Blue */
+  --color-neutral: #8A7F72;    /* Muted Taupe / Gray */
+  
+  /* Background canvas shade */
+  --color-canvas: #F5ECE1;
+
+  /* Typography matching the preview image */
+  --font-headline: "Newsreader", serif;
+  --font-body: "Public Sans", sans-serif;
+}
