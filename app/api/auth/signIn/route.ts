@@ -55,7 +55,3 @@ export async function POST(request: Request) {
     await connection?.close();
   }
 }
-
-export async function GET(request: Request) {
-  
-}

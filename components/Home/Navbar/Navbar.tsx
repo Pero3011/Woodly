@@ -87,7 +87,9 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
           aria-label="User Profile"
           className="p-1 hover:opacity-80 transition-opacity"
         >
-          <CircleUser className="w-6 h-6" />
+          <a href="/products/profile/profileSettings">
+            <CircleUser className="w-6 h-6" />
+          </a>
         </button>
       </div>
     </nav>
