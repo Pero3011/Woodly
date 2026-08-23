@@ -11,7 +11,7 @@ interface NavbarProps {
 
 export default function Navbar({ hasSearch = false }: NavbarProps) {
   return (
-    <nav className="flex justify-between items-center px-6 md:px-16 lg:px-24 bg-secondary text-primary w-full h-18">
+    <nav className="flex justify-between items-center px-6 md:px-16 lg:px-24 bg-secondary text-primary border-b border-neutral-300 w-full h-18">
       {/* LHS */}
       <div className="flex items-center gap-6 md:gap-10">
         {/* Logo */}
@@ -29,7 +29,7 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
         {/* Links */}
         <ul className="hidden md:flex items-center gap-5 font-semibold">
           <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/">Home</Link>
+            <Link href="/products/home">Home</Link>
           </li>
           <li className="cursor-pointer hover:font-bold transition-opacity">
             <Link href="/products/shop">Shop</Link>

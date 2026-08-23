@@ -2,7 +2,7 @@ import { ChevronDown } from "lucide-react";
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 min-h-screen bg-[#fdf0dd] p-6 text-[#2A1E17]">
+    <aside className="w-64 min-h-screen bg-secondary p-6 text-[#2A1E17] border-r border-neutral-300">
       <h1 className=" text-2xl font-bold mb-6 text-[#5A2D0C]">
         Filters
       </h1>
