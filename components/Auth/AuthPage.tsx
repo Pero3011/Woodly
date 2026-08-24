@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeClosed } from "lucide-react";
-import BottomAlert from "../UserNotification/BottomAlert";
 
 function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
@@ -57,8 +56,6 @@ export default function AuthPage() {
       if (response.ok) {
         const data = await response.json();
         console.log(`User ${data.name || "account"} created successfully!`);
-
-        router.push("/products/home");
       
       } else {
         const errorData = await response.json().catch(() => null);
@@ -85,7 +82,6 @@ export default function AuthPage() {
 
       if (response.ok) {
         console.log(`User Logged in successfully!`);
-        router.push("/products/home");
       } else {
         const errorData = await response.json().catch(() => null);
         console.log(

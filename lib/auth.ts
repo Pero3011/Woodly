@@ -2,7 +2,7 @@ import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 
 //Defining the JWT_SECRET_KEY
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+const secret = new TextEncoder().encode(process.env.JWT_SECRET_KEY);
 
 //Generate new token when Signing In/Up
 export async function createToken(payload: any) {

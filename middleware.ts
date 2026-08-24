@@ -3,7 +3,10 @@ import { verifyToken } from "./lib/auth";
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/products");
+  const { pathname } = request.nextUrl;
+
+  const isProtectedRoute = pathname.startsWith("/products");
+  const isAuthRoute = pathname === "/auth";
 
   if (isProtectedRoute) {
     if (!token) {
@@ -17,14 +20,15 @@ export async function middleware(request: NextRequest) {
       response.cookies.delete("token");
       return response;
     }
+  }
 
-    if (token && request.nextUrl.pathname === "/auth") {
-      const payload = await verifyToken(token);
-      if (payload) {
-        return NextResponse.redirect(new URL("/", request.url));
-      }
+  if (token && isAuthRoute) {
+    const payload = await verifyToken(token);
+    if (payload) {
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
+
   return NextResponse.next();
 }
 

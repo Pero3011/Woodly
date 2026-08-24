@@ -1,3 +1,4 @@
+import { createToken } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     connection = await getDatabaseConnection();
 
     const result = await connection.execute(
-      `select email, password from users where email = :email`,
+      `select USER_ID,NAME,EMAIL,PASSWORD,ROLE from users where email = :email`,
       { email: body.email },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
@@ -44,7 +45,33 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ message: "Sign in successfully!!" });
+    //Generate Token
+    const token = await createToken({
+      user_id: userFound.USER_ID,
+      user_name: userFound.NAME,
+      role: userFound.ROLE,
+    });
+
+    //Stores token in a cookie
+    const response = NextResponse.json({
+      message: "Login successful",
+      user: {
+        id: userFound.USER_ID,
+        email: userFound.EMAIL,
+        name: userFound.NAME,
+      },
+    });
+
+
+    response.cookies.set("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60,
+      path: "/",
+    });
+
+    return response;
   } catch (err: any) {
     console.error("Auth Error:", err);
     return NextResponse.json(
