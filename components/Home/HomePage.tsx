@@ -5,7 +5,7 @@ import JourneyPage from "@/components/Home/TheJourneyOfYourPiece/Journeypage"
 import MasterPiece from "@/components/Home/FeaturedMasterPiece/MasterPiece"
 import Footer from "@/components/Home/Footer/FooterPage"
 
-export default function HomePage() {
+export default function Home() {
   return (
     <div>
       <Navbar />
