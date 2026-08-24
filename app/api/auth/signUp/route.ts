@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDatabaseConnection } from "@/lib/db";
 import bcrypt from "bcrypt";
+import oracledb from "oracledb";
+import { createToken } from "@/lib/auth";
 
 export async function POST(request: any) {
   let connection;
@@ -28,7 +30,7 @@ export async function POST(request: any) {
     const passwordHashed = await bcrypt.hash(body.password, 10);
     const role = body.role || "user";
 
-    const newUser = await connection.execute(
+    await connection.execute(
       `INSERT INTO users (name, phone, email, password, role) VALUES (:name, :phone, :email, :password, :role)`,
       {
         name: body.name,
@@ -40,7 +42,39 @@ export async function POST(request: any) {
       { autoCommit: true },
     );
 
-    return NextResponse.json(newUser);
+    const fetched = await connection.execute(
+      `SELECT user_id, name, role FROM users WHERE email = :email`,
+      { email: body.email },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    );
+    const newUserRow = (fetched.rows as any[])[0];
+
+    //Generate Token
+    const token = await createToken({
+      user_id: newUserRow.USER_ID,
+      user_name: newUserRow.NAME,
+      role: newUserRow.ROLE,
+    });
+
+    //Stores token in a cookie
+    const response = NextResponse.json({
+      message: "Login successful",
+      user: {
+        id: newUserRow.USER_ID,
+        name: newUserRow.NAME,
+        role: newUserRow.ROLE,
+      },
+    });
+
+    response.cookies.set("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 5,
+      path: "/",
+    });
+
+    return response;
   } catch (error: any) {
     return NextResponse.json(
       { error: "Internal Server Error" },

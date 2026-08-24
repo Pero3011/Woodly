@@ -29,7 +29,7 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
         {/* Links */}
         <ul className="hidden md:flex items-center gap-5 font-semibold">
           <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/products/home">Home</Link>
+            <Link href="/auth">Home</Link>
           </li>
           <li className="cursor-pointer hover:font-bold transition-opacity">
             <Link href="/products/shop">Shop</Link>
