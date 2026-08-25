@@ -1,5 +1,4 @@
 import Navbar from "@/components/Home/Navbar/Navbar";
-import OrdersHistory from "@/components/Profile/OrdersHistory";
 import ProfileSettings from "@/components/Profile/ProfileSettings";
 import Sidebar from "@/components/Profile/Sidebar";
 

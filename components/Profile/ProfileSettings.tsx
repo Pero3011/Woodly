@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CircleDollarSign,
   Store,
@@ -10,11 +10,24 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import BottomAlert from "../UserNotification/BottomAlert";
+
+interface SessionUser {
+  id: number;
+  name: string;
+  role: string;
+}
 
 export default function ProfileSettings() {
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [showAlert, setShowAlert] = useState(true);
+  const [user, setUser] = useState<SessionUser | null>(null);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null))
+
+  }, []);
 
   const stats = [
     {
@@ -151,7 +164,7 @@ export default function ProfileSettings() {
           />
         </div>
         <div>
-          <h1 className="font-serif text-4xl text-[#2A1E17]">Pierre Bassem Salah</h1>
+          <h1 className="font-serif text-4xl text-[#2A1E17]">{user?.name}</h1>
           <button
             onClick={() => setIsEditOpen(true)}
             className="mt-4 flex items-center gap-2 bg-[#EFE1CC] hover:bg-[#E5D4B8] text-[#5C4530] font-medium text-sm px-4 py-2 rounded-lg transition-colors"
