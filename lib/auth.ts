@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 interface UserSession {
   user_id: string;
   user_name: string;
+  user_email: string;
+  user_phone: string;
   role: string;
 }
 

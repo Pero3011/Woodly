@@ -8,13 +8,13 @@ const tabs = [
     id: "profile",
     label: "Profile Settings",
     icon: User,
-    path: "/products/profile/profileSettings",
+    path: "/pages/profile/profileSettings",
   },
   {
     id: "orders",
     label: "Order History",
     icon: ShoppingBag,
-    path: "/products/profile/ordersHistory",
+    path: "/pages/profile/ordersHistory",
   },
 ] as const;
 

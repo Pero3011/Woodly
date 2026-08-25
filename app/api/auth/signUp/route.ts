@@ -43,7 +43,7 @@ export async function POST(request: any) {
     );
 
     const fetched = await connection.execute(
-      `SELECT user_id, name, role FROM users WHERE email = :email`,
+      `select USER_ID,NAME,EMAIL,PASSWORD,PHONE,ROLE from users where email = :email`,
       { email: body.email },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
@@ -51,8 +51,10 @@ export async function POST(request: any) {
 
     //Generate Token
     const token = await createToken({
-      user_id: newUserRow.USER_ID,
+      user_id: newUserRow.USER_ID.toString("hex"),
       user_name: newUserRow.NAME,
+      user_email: newUserRow.EMAIL,
+      user_phone: newUserRow.PHONE,
       role: newUserRow.ROLE,
     });
 
@@ -61,7 +63,9 @@ export async function POST(request: any) {
       message: "Login successful",
       user: {
         id: newUserRow.USER_ID,
+        email: newUserRow.EMAIL,
         name: newUserRow.NAME,
+        phone: newUserRow.PHONE,
         role: newUserRow.ROLE,
       },
     });
@@ -70,7 +74,7 @@ export async function POST(request: any) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 15*60,
+      maxAge: 15 * 60,
       path: "/",
     });
 

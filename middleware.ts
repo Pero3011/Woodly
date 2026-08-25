@@ -5,7 +5,7 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
-  const isProtectedRoute = pathname.startsWith("/products");
+  const isProtectedRoute = pathname.startsWith("/pages");
   const isAuthRoute = pathname === "/auth";
 
   if (isProtectedRoute) {

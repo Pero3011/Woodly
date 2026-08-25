@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     connection = await getDatabaseConnection();
 
     const result = await connection.execute(
-      `select USER_ID,NAME,EMAIL,PASSWORD,ROLE from users where email = :email`,
+      `select USER_ID,NAME,EMAIL,PASSWORD,PHONE,ROLE from users where email = :email`,
       { email: body.email },
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
@@ -47,8 +47,10 @@ export async function POST(request: Request) {
 
     //Generate Token
     const token = await createToken({
-      user_id: userFound.USER_ID,
+      user_id: userFound.USER_ID.toString("hex"),
       user_name: userFound.NAME,
+      user_email: userFound.EMAIL,
+      user_phone: userFound.PHONE,
       role: userFound.ROLE,
     });
 
@@ -59,6 +61,8 @@ export async function POST(request: Request) {
         id: userFound.USER_ID,
         email: userFound.EMAIL,
         name: userFound.NAME,
+        phone: userFound.PHONE,
+        role: userFound.ROLE,
       },
     });
 

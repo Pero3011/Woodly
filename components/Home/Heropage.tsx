@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { easeIn, motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 export default function Heropage() {
   // Array of your images in the public folder
@@ -61,12 +62,16 @@ export default function Heropage() {
           </h1>
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <button className="px-8 py-3 bg-primary text-secondary rounded-lg shadow-md hover:scale-110 transition-transform uppercase text-[16px]">
-              Shop Pieces
-            </button>
-            <button className="px-10 py-3 bg-transparent border-2 border-secondary text-secondary rounded-lg hover:bg-neutral-200 hover:text-black transition uppercase text-[16px]">
-              Customize Your Own
-            </button>
+            <Link href={"/pages/shop"}>
+              <button className="px-8 py-3 bg-primary text-secondary rounded-lg shadow-md hover:scale-110 transition-transform uppercase text-[16px]">
+                Shop Pieces
+              </button>
+            </Link>
+            <Link href={"/pages/customized"}>
+              <button className="px-10 py-3 bg-transparent border-2 border-secondary text-secondary rounded-lg hover:bg-neutral-200 hover:text-black transition uppercase text-[16px]">
+                Customize Your Own
+              </button>
+            </Link>
           </div>
         </motion.div>
       </div>

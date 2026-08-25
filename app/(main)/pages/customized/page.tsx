@@ -32,7 +32,7 @@ export default function CustomizePage() {
   }
 
   return (
-    <div className="min-h-full flex flex-col bg-canvas">
+    <div className="min-h-full flex flex-col bg-secondary">
       <Navbar hasSearch={true} />
 
       <main className="flex-1">

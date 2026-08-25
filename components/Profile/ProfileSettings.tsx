@@ -14,6 +14,8 @@ import Image from "next/image";
 interface SessionUser {
   id: number;
   name: string;
+  email: string;
+  phone: string;
   role: string;
 }
 
@@ -21,13 +23,29 @@ export default function ProfileSettings() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
 
+  // Editable form state — separate from `user` so the modal has its own
+  // draft that only overwrites `user` once the save succeeds.
+  const [formName, setFormName] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
   useEffect(() => {
     fetch("/api/profile")
       .then((res) => res.json())
       .then((data) => setUser(data.user))
-      .catch(() => setUser(null))
-
+      .catch(() => setUser(null));
   }, []);
+
+  // Seed the draft fields whenever we (re)load the user or open the modal.
+  useEffect(() => {
+    if (user) {
+      setFormName(user.name ?? "");
+      setFormPhone(user.phone ?? "");
+      setFormEmail(user.email ?? "");
+    }
+  }, [user, isEditOpen]);
 
   const stats = [
     {
@@ -68,9 +86,36 @@ export default function ProfileSettings() {
     },
   ];
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setIsEditOpen(false);
+    setFormError(null);
+    setIsSaving(true);
+
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formName,
+          phone: formPhone,
+          email: formEmail,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setFormError(data?.error || "Something went wrong. Please try again.");
+        return;
+      }
+
+      setUser(data.user);
+      setIsEditOpen(false);
+    } catch (err) {
+      setFormError("Network error. Please check your connection.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -99,12 +144,20 @@ export default function ProfileSettings() {
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {formError && (
+                <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  {formError}
+                </p>
+              )}
+
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-[#2A1E17]">Name</span>
                 <input
                   type="text"
                   name="name"
                   placeholder="Your name"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
                   className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm text-[#2A1E17] placeholder:text-neutral-400 outline-none transition-colors focus:border-[#5C4530] focus:ring-1 focus:ring-[#5C4530]"
                 />
               </label>
@@ -116,7 +169,9 @@ export default function ProfileSettings() {
                 <input
                   type="tel"
                   name="phone"
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="Phone Number"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
                   className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm text-[#2A1E17] placeholder:text-neutral-400 outline-none transition-colors focus:border-[#5C4530] focus:ring-1 focus:ring-[#5C4530]"
                 />
               </label>
@@ -129,6 +184,8 @@ export default function ProfileSettings() {
                   type="email"
                   name="email"
                   placeholder="name@example.com"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
                   className="w-full rounded-lg border border-neutral-200 px-3 py-2.5 text-sm text-[#2A1E17] placeholder:text-neutral-400 outline-none transition-colors focus:border-[#5C4530] focus:ring-1 focus:ring-[#5C4530]"
                 />
               </label>
@@ -137,15 +194,17 @@ export default function ProfileSettings() {
                 <button
                   type="button"
                   onClick={() => setIsEditOpen(false)}
-                  className="px-4 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
+                  disabled={isSaving}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-100 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#3A2E22] hover:bg-[#2A1E17] transition-colors text-white text-sm font-medium px-5 py-2.5 rounded-lg"
+                  disabled={isSaving}
+                  className="bg-[#3A2E22] hover:bg-[#2A1E17] transition-colors text-white text-sm font-medium px-5 py-2.5 rounded-lg disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Apply changes
+                  {isSaving ? "Saving..." : "Apply changes"}
                 </button>
               </div>
             </form>
