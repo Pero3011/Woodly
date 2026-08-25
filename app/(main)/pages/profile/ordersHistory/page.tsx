@@ -1,6 +1,6 @@
-import Navbar from "@/components/Home/Navbar/Navbar";
+import Navbar from "@/components/Navbar";
 import OrdersHistory from "@/components/Profile/OrdersHistory";
-import Sidebar from "@/components/Profile/Sidebar";
+import Sidebar from "@/components/ProfileSidebar";
 
 export default function page() {
   return (

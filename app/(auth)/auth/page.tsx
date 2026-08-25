@@ -43,7 +43,7 @@ export default function AuthPage() {
   }, []);
 
   const handleSignUpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     try {
       const response = await fetch("/api/auth/signUp", {
@@ -56,10 +56,9 @@ export default function AuthPage() {
 
       if (response.ok) {
         const data = await response.json();
-        router.push('/');
+        router.push("/");
         router.refresh();
         console.log(`User ${data.name || "account"} created successfully!`);
-      
       } else {
         const errorData = await response.json().catch(() => null);
         console.log(
@@ -85,7 +84,7 @@ export default function AuthPage() {
 
       if (response.ok) {
         console.log(`User Logged in successfully!`);
-        router.push('/');
+        router.push("/");
         router.refresh();
       } else {
         const errorData = await response.json().catch(() => null);

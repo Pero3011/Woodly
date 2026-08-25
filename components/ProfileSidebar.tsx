@@ -18,7 +18,7 @@ const tabs = [
   },
 ] as const;
 
-export default function Sidebar() {
+export default function ProfileSidebar() {
   const pathname = usePathname();
 
   const baseStyles =

@@ -57,10 +57,10 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
             <Link href="/">Home</Link>
           </li>
           <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/products/shop">Shop</Link>
+            <Link href="/pages/shop">Shop</Link>
           </li>
           <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/products/customize">Customize</Link>
+            <Link href="/pages/customize">Customize</Link>
           </li>
         </ul>
       </div>
@@ -119,7 +119,7 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
                   Sign Out
                 </button>
                 <Link
-                  href="/products/profile/profileSettings"
+                  href="/pages/profile/profileSettings"
                   aria-label="User Profile"
                 >
                   <CircleUser className="w-6 h-6" />

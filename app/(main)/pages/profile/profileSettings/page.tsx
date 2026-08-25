@@ -1,6 +1,6 @@
-import Navbar from "@/components/Home/Navbar/Navbar";
+import Navbar from "@/components/Navbar";
 import ProfileSettings from "@/components/Profile/ProfileSettings";
-import Sidebar from "@/components/Profile/Sidebar";
+import ProfileSidebar from "@/components/ProfileSidebar";
 
 export default function page() {
   return (
@@ -8,7 +8,7 @@ export default function page() {
       <Navbar hasSearch={true} />
 
       <div className="flex ">
-        <Sidebar />
+        <ProfileSidebar />
         <div className="flex-1">
           <ProfileSettings />
         </div>
