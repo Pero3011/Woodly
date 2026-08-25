@@ -29,7 +29,7 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
         {/* Links */}
         <ul className="hidden md:flex items-center gap-5 font-semibold">
           <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/auth">Home</Link>
+            <Link href="/">Home</Link>
           </li>
           <li className="cursor-pointer hover:font-bold transition-opacity">
             <Link href="/products/shop">Shop</Link>
@@ -42,6 +42,7 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
 
       {/* RHS */}
       <div className="flex items-center gap-5">
+
         {/* Smooth Expandable Search Bar Container */}
         <AnimatePresence>
           {hasSearch && (
@@ -83,6 +84,7 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
         >
           <ShoppingCart className="w-6 h-6" />
         </button>
+
         <button
           aria-label="User Profile"
           className="p-1 hover:opacity-80 transition-opacity"
