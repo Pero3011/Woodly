@@ -60,7 +60,7 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
             <Link href="/pages/shop">Shop</Link>
           </li>
           <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/pages/customize">Customize</Link>
+            <Link href="/pages/customized">Customize</Link>
           </li>
         </ul>
       </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession, verifyToken } from "./lib/auth";
+import { verifyToken } from "./lib/auth";
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
@@ -32,5 +32,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/products/:path*", "/auth"],
+  matcher: ["/pages/:path*", "/auth"],
 };
