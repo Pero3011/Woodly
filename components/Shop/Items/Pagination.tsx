@@ -1,20 +1,21 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
 
 interface PaginationProps {
   totalPages: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 }
 
 export default function Pagination({
-  totalPages
+  totalPages,
+  currentPage,
+  onPageChange,
 }: PaginationProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-
   const goTo = (page: number) => {
     if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
+    onPageChange(page);
   };
 
   return (

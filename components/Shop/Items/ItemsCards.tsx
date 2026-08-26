@@ -67,7 +67,7 @@ export default function ItemsCards({
             {category}
           </span>
           <span className="bg-[#D98A3D] text-white text-base font-semibold px-4 py-1.5 rounded-lg">
-            {price}
+            {price} EGP
           </span>
         </div>
 

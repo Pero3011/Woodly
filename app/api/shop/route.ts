@@ -1,37 +1,39 @@
 import { getDatabaseConnection } from "@/lib/db";
 import { NextResponse } from "next/server";
-import oracledb from "oracledb"
+import oracledb from "oracledb";
 export async function GET() {
   let connection;
 
   try {
     connection = await getDatabaseConnection();
 
-    const products = connection.execute(
+    const result = connection.execute(
       `SELECT PROD_ID,NAME, DESCRIPTION, RATING, CATEGORY, PRICE, IMAGE FROM PRODUCTS`,
       {},
       { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
-    const rows = (await products).rows as any[];
+    const rows = (await result).rows as any[];
     const product = rows[0];
 
-    if (!products) {
+    if (!rows || rows.length == 0) {
       return NextResponse.json(
         { message: "No products Shop is empty" },
         { status: 404 },
       );
     }
 
-    return NextResponse.json({
-      prod_id: product.PROD_ID,
-      prod_name: product.NAME,
-      prod_description: product.DESCRIPTION,
-      prod_rating: product.RATING,
-      prod_category: product.CATEGORY,
-      prod_price: product.PRICE,
-      prod_img: product.IMAGE,
-    });
+    const products = rows.map((row) => ({
+      prod_id: row.PROD_ID.toString("hex"),
+      prod_name: row.NAME,
+      prod_description: row.DESCRIPTION,
+      prod_rating: row.RATING,
+      prod_category: row.CATEGORY,
+      prod_price: row.PRICE,
+      prod_img: row.IMAGE,
+    }));
+
+    return NextResponse.json({ products });
   } catch (err: any) {
     console.error("Update Profile Error:", err);
     return NextResponse.json(
