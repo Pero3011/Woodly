@@ -33,7 +33,7 @@ export default function CustomizePage() {
 
   return (
     <div className="min-h-full flex flex-col bg-secondary">
-      <Navbar hasSearch={true} />
+      <Navbar/>
 
       <main className="flex-1">
         {/* Hero */}

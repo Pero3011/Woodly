@@ -7,9 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-interface NavbarProps {
-  hasSearch?: boolean;
-}
 
 interface SessionUser {
   id: number;
@@ -17,7 +14,7 @@ interface SessionUser {
   role: string;
 }
 
-export default function Navbar({ hasSearch = false }: NavbarProps) {
+export default function Navbar() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -68,7 +65,6 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
       {/* RHS */}
       <div className="flex items-center gap-5">
         <AnimatePresence>
-          {hasSearch && (
             <motion.form
               initial={{ width: 44, opacity: 0 }}
               animate={{ width: 240, opacity: 1 }}
@@ -89,7 +85,6 @@ export default function Navbar({ hasSearch = false }: NavbarProps) {
                 className="w-60 h-full pl-10 pr-4 bg-white text-stone-800 placeholder-stone-400 text-[14px] font-body rounded-lg border border-stone-300 shadow-sm focus:outline-none focus:border-amber-700 transition-colors whitespace-nowrap"
               />
             </motion.form>
-          )}
         </AnimatePresence>
 
         <button

@@ -5,7 +5,7 @@ import ProfileSidebar from "@/components/ProfileSidebar";
 export default function page() {
   return (
     <div className="w-full">
-      <Navbar hasSearch={true} />
+      <Navbar/>
 
       <div className="flex ">
         <ProfileSidebar />
