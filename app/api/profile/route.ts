@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSession, updateSessionUser } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import oracledb from "oracledb";
+import { cookies } from "next/headers";
 
 export async function GET() {
   const session = await getSession();
@@ -73,6 +74,12 @@ export async function PUT(request: Request) {
 
     const row = (updated.rows as any[])[0];
 
+    await updateSessionUser({
+      user_name: row.NAME,
+      user_email: row.EMAIL,
+      user_phone: row.PHONE,
+    });
+
     return NextResponse.json({
       user: {
         id: row.USER_ID,
@@ -84,6 +91,39 @@ export async function PUT(request: Request) {
     });
   } catch (err: any) {
     console.error("Update Profile Error:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  } finally {
+    await connection?.close();
+  }
+}
+
+export async function DELETE() {
+  let connection;
+
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  try {
+    connection = await getDatabaseConnection();
+    const userIdBuffer = Buffer.from(session.user_id, "hex");
+
+    await connection.execute(
+      `DELETE FROM USERS WHERE user_id = :ID`,
+      { ID: userIdBuffer },
+      { autoCommit: true },
+    );
+
+    const storedCookie = await cookies();
+    storedCookie.delete("token");
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("Delete Profile Error:", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

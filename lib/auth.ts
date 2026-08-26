@@ -9,10 +9,8 @@ interface UserSession {
   role: string;
 }
 
-//Defining the JWT_SECRET_KEY
 const secret = new TextEncoder().encode(process.env.JWT_SECRET_KEY);
 
-//Generate new token when Signing In/Up
 export async function createToken(payload: any) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
@@ -21,7 +19,6 @@ export async function createToken(payload: any) {
     .sign(secret);
 }
 
-//Verifying the Generated Token
 export async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, secret);
@@ -38,4 +35,31 @@ export async function getSession(): Promise<UserSession | null> {
   if (!token) return null;
   const payload = await verifyToken(token);
   return payload as UserSession | null;
+}
+
+// Re-signs the JWT with updated fields merged into the current session,
+// and writes it back to the cookie so subsequent requests see fresh data.
+export async function updateSessionUser(
+  updates: Partial<UserSession>,
+): Promise<UserSession | null> {
+  const current = await getSession();
+  if (!current) return null;
+
+  const updatedSession: UserSession = {
+    ...current,
+    ...updates,
+  };
+
+  const newToken = await createToken(updatedSession);
+
+  const storedCookie = await cookies();
+  storedCookie.set("token", newToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 15,
+  });
+
+  return updatedSession;
 }

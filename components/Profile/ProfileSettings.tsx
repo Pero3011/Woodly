@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CircleDollarSign,
   Store,
@@ -10,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
+import BottomAlert from "../UserNotification/BottomAlert";
 
 interface SessionUser {
   id: number;
@@ -20,8 +22,11 @@ interface SessionUser {
 }
 
 export default function ProfileSettings() {
+  const route = useRouter();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [message, setMessage] = useState<string>();
+  const [isVisible, setIsVisible] = useState<boolean>(false);
 
   // Editable form state — separate from `user` so the modal has its own
   // draft that only overwrites `user` once the save succeeds.
@@ -30,6 +35,7 @@ export default function ProfileSettings() {
   const [formEmail, setFormEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetch("/api/profile")
@@ -111,10 +117,39 @@ export default function ProfileSettings() {
 
       setUser(data.user);
       setIsEditOpen(false);
+      setIsVisible(true);
+      setMessage("User info updated successfully!");
     } catch (err) {
       setFormError("Network error. Please check your connection.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    const confirmed = window.confirm(
+      "This will permanently delete your account. This cannot be undone. Continue?",
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/profile", { method: "DELETE" });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        setMessage(data?.error || "Failed to delete account.");
+        setIsVisible(true);
+        return;
+      }
+
+      // Session cookie is cleared server-side; redirect to logged-out state.
+      window.location.href = "/";
+    } catch (err) {
+      setMessage("Network error. Please check your connection.");
+      setIsVisible(true);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -330,10 +365,21 @@ export default function ProfileSettings() {
             certain.
           </p>
         </div>
-        <button className="bg-red-700 hover:bg-red-800 transition-colors text-white text-sm font-medium px-5 py-2.5 rounded-lg shrink-0">
-          Delete Account
+        <button
+          onClick={handleDeleteAccount}
+          disabled={isDeleting}
+          className="bg-red-700 hover:bg-red-800 transition-colors text-white text-sm font-medium px-5 py-2.5 rounded-lg shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isDeleting ? "Deleting..." : "Delete Account"}
         </button>
       </div>
+      <BottomAlert
+        message={message}
+        isVisible={isVisible}
+        onClose={function (): void {
+          setIsVisible(false);
+        }}
+      />
     </div>
   );
 }
