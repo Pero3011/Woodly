@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+
+import { useEffect, useState } from "react";
 import FilterSidebar from "@/components/Shop/Items/FilterSidebar";
 import ItemsGrid from "@/components/Shop/Items/ItemsGrid";
 import Navbar from "@/components/Navbar";
 import Heading from "@/components/Shop/Heading/Heading";
-import Filters from "@/components/Shop/Items/Filters";
+import Pagination from "@/components/Shop/Items/Pagination";
 
 export interface Filters {
   categories: string[];
@@ -12,12 +13,29 @@ export interface Filters {
   maxPrice: number;
   sortBy: "newest" | "price-asc" | "price-desc";
 }
-export default function page() {
+
+export interface PaginationMeta {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export default function Page() {
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [displaySetting, setDisplaySetting] = useState<
     "grid-cols-3" | "grid-rows-3"
   >("grid-cols-3");
+
+  // Pagination State (Set default pageSize to 3)
+  const [page, setPage] = useState<number>(1);
+  const [meta, setMeta] = useState<PaginationMeta>({
+    currentPage: 1,
+    pageSize: 3,
+    totalItems: 0,
+    totalPages: 1,
+  });
 
   const [filters, setFilters] = useState<Filters>({
     categories: [],
@@ -26,63 +44,72 @@ export default function page() {
     sortBy: "newest",
   });
 
-  useEffect(() => {
-    fetch("/api/shop")
-      .then((res) => res.json())
-      .then((data) => setProducts(data.products ?? []))
-      .catch(() => setProducts([]))
-      .finally(() => setIsLoading(false));
-  }, []);
+  const handleFiltersChange = (newFilters: Filters) => {
+    setFilters(newFilters);
+    setPage(1); // Reset to page 1 on filter change
+  };
 
-  const filteredProducts = useMemo(() => {
-    let result = [...products];
+  useEffect(() => {
+    setIsLoading(true);
+
+    const params = new URLSearchParams();
+    params.append("page", page.toString());
+    params.append("limit", "3");
 
     if (filters.categories.length > 0) {
-      result = result.filter((p) =>
-        filters.categories.includes(p.prod_category),
-      );
+      params.append("category", filters.categories.join(","));
     }
-
     if (filters.woodType) {
-      // Fallback substring match — replace with p.prod_wood_type === filters.woodType
-      // once a WOOD_TYPE column exists on PRODUCTS.
-      result = result.filter((p) =>
-        `${p.prod_name} ${p.prod_description}`
-          .toLowerCase()
-          .includes(filters.woodType!.toLowerCase()),
-      );
+      params.append("woodType", filters.woodType);
+    }
+    if (filters.maxPrice) {
+      params.append("price", filters.maxPrice.toString());
+    }
+    if (filters.sortBy) {
+      params.append("sortBy", filters.sortBy);
     }
 
-    result = result.filter((p) => Number(p.prod_price) <= filters.maxPrice);
+    fetch(`/api/shop?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setProducts(data.products ?? []);
+        if (data.meta) {
+          setMeta(data.meta);
+        }
+      })
+      .catch(() => {
+        setProducts([]);
+        setMeta({ currentPage: 1, pageSize: 3, totalItems: 0, totalPages: 1 });
+      })
+      .finally(() => setIsLoading(false));
+  }, [filters, page]);
 
-    if (filters.sortBy === "price-asc") {
-      result.sort((a, b) => Number(a.prod_price) - Number(b.prod_price));
-    } else if (filters.sortBy === "price-desc") {
-      result.sort((a, b) => Number(b.prod_price) - Number(a.prod_price));
-    }
-    // "newest" — assumes /api/shop already returns newest-first; add an
-    // ORDER BY / created_at column if you need true newest-first sorting.
-
-    return result;
-  }, [products, filters]);
   return (
     <div>
-      <Navbar/>
+      <Navbar />
       <div className="flex">
-        <FilterSidebar filters={filters} onFiltersChange={setFilters} />
+        <FilterSidebar
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+        />
         <div className="flex-1">
           {isLoading ? (
             <p className="text-center text-neutral-500 py-10">
               Loading products...
             </p>
           ) : (
-            <div className="px-20">
+            <div className="px-20 py-6">
               <Heading layout={displaySetting} setLayout={setDisplaySetting} />
-              <Filters />
-              <ItemsGrid
-                DisplaySetting={displaySetting}
-                products={filteredProducts}
-              />
+              <ItemsGrid DisplaySetting={displaySetting} products={products} />
+
+              {/* FIXED: Render when totalPages >= 1 and products exist */}
+              {products.length > 0 && meta.totalPages > 0 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={meta.totalPages}
+                  onPageChange={(newPage) => setPage(newPage)}
+                />
+              )}
             </div>
           )}
         </div>

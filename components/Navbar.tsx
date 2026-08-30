@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Bell, ShoppingCart, CircleUser, Search } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Bell, ShoppingCart, CircleUser, LogOut} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -64,29 +63,6 @@ export default function Navbar() {
 
       {/* RHS */}
       <div className="flex items-center gap-5">
-        <AnimatePresence>
-            <motion.form
-              initial={{ width: 44, opacity: 0 }}
-              animate={{ width: 240, opacity: 1 }}
-              exit={{ width: 44, opacity: 0 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="relative hidden sm:block h-11"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none z-10">
-                <Search
-                  className="h-5 w-5 text-stone-500 shrink-0"
-                  strokeWidth={2.5}
-                />
-              </div>
-              <input
-                type="text"
-                placeholder="Find your piece..."
-                className="w-60 h-full pl-10 pr-4 bg-white text-stone-800 placeholder-stone-400 text-[14px] font-body rounded-lg border border-stone-300 shadow-sm focus:outline-none focus:border-amber-700 transition-colors whitespace-nowrap"
-              />
-            </motion.form>
-        </AnimatePresence>
-
         <button
           aria-label="Notifications"
           className="p-1 hover:opacity-80 transition-opacity"
@@ -104,21 +80,23 @@ export default function Navbar() {
           <>
             {user ? (
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-sm hidden sm:inline">
-                  {user.name}
-                </span>
-                <button
-                  onClick={handleSignOut}
-                  className="text-sm font-semibold hover:opacity-80 transition-opacity"
-                >
-                  Sign Out
-                </button>
                 <Link
                   href="/pages/profile/profileSettings"
                   aria-label="User Profile"
+                  className="flex items-center gap-2"
                 >
+                  <span className="font-semibold text-sm hidden sm:inline">
+                    {user.name}
+                  </span>
                   <CircleUser className="w-6 h-6" />
                 </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="text-sm font-semibold hover:opacity-80 transition-opacity flex items-center gap-2"
+                >
+                  Sign Out
+                  <LogOut size={20} />
+                </button>
               </div>
             ) : (
               <div className="flex items-center gap-3">
