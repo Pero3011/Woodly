@@ -6,6 +6,7 @@ import { ShoppingCart, CircleUser, LogOut} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import CartSideBar from "./Cart/Sidebar";
 
 interface SessionUser {
   id: number;
@@ -16,6 +17,7 @@ interface SessionUser {
 export default function Navbar() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -35,94 +37,97 @@ export default function Navbar() {
 
   // Cart Counter State
   const {cartCount} = useCart()
-
-  //Export the Cart Counter and store it in the cartCounter state
-  useEffect(() => {
-    
-  })
   
   return (
-    <nav className="flex justify-between items-center px-6 md:px-16 lg:px-24 bg-secondary text-primary border-b border-neutral-300 w-full h-18">
-      {/* LHS */}
-      <div className="flex items-center gap-6 md:gap-10">
-        <div className="relative w-18.75 h-18.75">
-          <Image
-            src="/logo.png"
-            alt="logo"
-            fill
-            sizes="75px"
-            priority
-            className="object-contain"
-          />
+    <div>
+      <nav className="flex justify-between items-center px-6 md:px-16 lg:px-24 bg-secondary text-primary border-b border-neutral-300 w-full h-18">
+        {/* LHS */}
+        <div className="flex items-center gap-6 md:gap-10">
+          <div className="relative w-18.75 h-18.75">
+            <Image
+              src="/logo.png"
+              alt="logo"
+              fill
+              sizes="75px"
+              priority
+              className="object-contain"
+            />
+          </div>
+
+          <ul className="hidden md:flex items-center gap-5 font-semibold">
+            <li className="cursor-pointer hover:font-bold transition-opacity">
+              <Link href="/">Home</Link>
+            </li>
+            <li className="cursor-pointer hover:font-bold transition-opacity">
+              <Link href="/pages/shop">Shop</Link>
+            </li>
+            <li className="cursor-pointer hover:font-bold transition-opacity">
+              <Link href="/pages/customized">Customize</Link>
+            </li>
+          </ul>
         </div>
 
-        <ul className="hidden md:flex items-center gap-5 font-semibold">
-          <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/">Home</Link>
-          </li>
-          <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/pages/shop">Shop</Link>
-          </li>
-          <li className="cursor-pointer hover:font-bold transition-opacity">
-            <Link href="/pages/customized">Customize</Link>
-          </li>
-        </ul>
-      </div>
+        {/* RHS */}
+        <div className="flex items-center gap-5">
+          <button
+            aria-label="Shopping Cart"
+            className="p-1 hover:opacity-80 transition-opacity relative"
+            onClick={() => setIsOpen(true)}
+          >
+            <ShoppingCart className="w-6 h-6" />
+            {/* Cart Counter */}
+            <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {cartCount}
+            </span>
+          </button>
 
-      {/* RHS */}
-      <div className="flex items-center gap-5">
-        <button
-          aria-label="Shopping Cart"
-          className="p-1 hover:opacity-80 transition-opacity relative"
-        >
-          <ShoppingCart className="w-6 h-6" />
-          {/* Cart Counter */}
-          <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-            {cartCount}
-          </span>
-        </button>
+          {!loading && (
+            <>
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/pages/profile/profileSettings"
+                    aria-label="User Profile"
+                    className="flex items-center gap-2"
+                  >
+                    <span className="font-semibold text-sm hidden sm:inline">
+                      {user.name}
+                    </span>
+                    <CircleUser className="w-6 h-6" />
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-sm font-semibold hover:opacity-80 transition-opacity flex items-center gap-2"
+                  >
+                    Sign Out
+                    <LogOut size={20} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/auth"
+                    className="text-sm font-semibold hover:opacity-80 transition-opacity"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/auth"
+                    className="text-sm font-semibold hover:opacity-80 transition-opacity"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </nav>
 
-        {!loading && (
-          <>
-            {user ? (
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/pages/profile/profileSettings"
-                  aria-label="User Profile"
-                  className="flex items-center gap-2"
-                >
-                  <span className="font-semibold text-sm hidden sm:inline">
-                    {user.name}
-                  </span>
-                  <CircleUser className="w-6 h-6" />
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="text-sm font-semibold hover:opacity-80 transition-opacity flex items-center gap-2"
-                >
-                  Sign Out
-                  <LogOut size={20} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/auth"
-                  className="text-sm font-semibold hover:opacity-80 transition-opacity"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/auth"
-                  className="text-sm font-semibold hover:opacity-80 transition-opacity"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </nav>
+      {/* Cart Sidebar logic */}
+      <aside>
+        <CartSideBar isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      </aside>
+    </div>
   );
 }
