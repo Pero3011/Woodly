@@ -64,12 +64,6 @@ export default function Navbar() {
       {/* RHS */}
       <div className="flex items-center gap-5">
         <button
-          aria-label="Notifications"
-          className="p-1 hover:opacity-80 transition-opacity"
-        >
-          <Bell className="w-6 h-6" />
-        </button>
-        <button
           aria-label="Shopping Cart"
           className="p-1 hover:opacity-80 transition-opacity"
         >

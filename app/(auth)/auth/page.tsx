@@ -240,15 +240,6 @@ export default function AuthPage() {
                 <div className="h-px flex-1 bg-[#d5c3b9]" />
               </div>
 
-              {/* Google Button */}
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-[#fff8f3] border border-[#d5c3b9] rounded-lg text-sm font-semibold hover:bg-[#eee0d1] transition-colors group"
-              >
-                <GoogleIcon className="w-5 h-5" />
-                <span>Google Workspace</span>
-              </button>
-
               <p className="mt-6 text-center text-sm text-[#51443d]">
                 New to Woodly?{" "}
                 <button
@@ -360,15 +351,6 @@ export default function AuthPage() {
                 <span className="text-xs text-[#51443d]">or continue with</span>
                 <div className="h-px flex-1 bg-[#d5c3b9]" />
               </div>
-
-              {/* Google Button */}
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-3 py-3 px-6 bg-[#fff8f3] border border-[#d5c3b9] rounded-lg text-sm font-semibold hover:bg-[#eee0d1] transition-colors group"
-              >
-                <GoogleIcon className="w-5 h-5" />
-                <span>Register with Google</span>
-              </button>
 
               <p className="mt-5 text-center text-sm text-[#51443d]">
                 Already have an account?{" "}

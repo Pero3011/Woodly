@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
       meta: {
         currentPage: page,
         pageSize: limit,
-        totalPages: Math.ceil(totalItems / limit) || 1, // Will divide totalItems by 3
+        totalPages: Math.ceil(totalItems / limit) || 1,
       },
     });
   } catch (err: any) {
