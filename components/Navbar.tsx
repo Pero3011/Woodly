@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Bell, ShoppingCart, CircleUser, LogOut} from "lucide-react";
+import { ShoppingCart, CircleUser, LogOut} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import { useCart } from "@/context/CartContext";
 
 interface SessionUser {
   id: number;
@@ -33,6 +33,14 @@ export default function Navbar() {
     router.refresh();
   }
 
+  // Cart Counter State
+  const {cartCount} = useCart()
+
+  //Export the Cart Counter and store it in the cartCounter state
+  useEffect(() => {
+    
+  })
+  
   return (
     <nav className="flex justify-between items-center px-6 md:px-16 lg:px-24 bg-secondary text-primary border-b border-neutral-300 w-full h-18">
       {/* LHS */}
@@ -65,9 +73,13 @@ export default function Navbar() {
       <div className="flex items-center gap-5">
         <button
           aria-label="Shopping Cart"
-          className="p-1 hover:opacity-80 transition-opacity"
+          className="p-1 hover:opacity-80 transition-opacity relative"
         >
           <ShoppingCart className="w-6 h-6" />
+          {/* Cart Counter */}
+          <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            {cartCount}
+          </span>
         </button>
 
         {!loading && (

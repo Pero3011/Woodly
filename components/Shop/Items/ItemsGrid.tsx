@@ -1,4 +1,5 @@
 "use client";
+import { useCart } from "@/context/CartContext";
 import ItemsCards from "./ItemsCards";
 import { motion } from "framer-motion";
 
@@ -10,6 +11,7 @@ interface Display {
 export default function ItemsGrid({ DisplaySetting, products }: Display) {
   const isList = DisplaySetting === "grid-rows-3";
   const gridClass = isList ? "md:grid-cols-1" : "md:grid-cols-3";
+  const { addToCart } = useCart();
 
   if (products.length === 0) {
     return (
@@ -29,12 +31,21 @@ export default function ItemsGrid({ DisplaySetting, products }: Display) {
             key={item.prod_id ?? i}
           >
             <ItemsCards
+              id={item.id}
               image={item.prod_img}
               category={item.prod_category}
               price={item.prod_price}
               title={item.prod_name}
               description={item.prod_description}
               layout={isList ? "list" : "grid"}
+              onAddToCart={() =>
+                addToCart({
+                  id: item.prod_id,
+                  name: item.prod_name,
+                  price: Number(item.prod_price),
+                  image: item.prod_img,
+                })
+              }
             />
           </motion.div>
         ))}
