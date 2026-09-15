@@ -1,5 +1,4 @@
 "use client";
-
 import { createContext, useContext, useEffect, useState } from "react";
 
 export interface CartItem {
@@ -20,29 +19,58 @@ interface CartContextType {
   cartCount: number;
 }
 
+interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+}
+
 //Creating an empty box
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [user, setUser] = useState<SessionUser | null>(null);
+
+  //GET the logged in user and store him in the user state
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null));
+  }, []);
 
   //Check if the user has anything in the cart before and pull it
   useEffect(() => {
-    const savedCart = localStorage.getItem("shopping-cart");
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart));
-      } catch (error) {
-        console.error("Failed to parse cart storage data:", error);
+    if (user) {
+      const savedCart = localStorage.getItem(user.id);
+      if (savedCart) {
+        try {
+          setCart(JSON.parse(savedCart));
+        } catch (error) {
+          console.error("Failed to parse cart storage data:", error);
+          setCart([]);
+        }
+      } else {
+        setCart([]);
       }
+    } else {
+      setCart([]);
     }
-    setIsHydrated(true);
-  }, []);
 
+    setIsHydrated(true);
+  }, [user]);
+
+  //Save the cart back to the correct drawer whenever it changes
+  //Watch list now includes "user" too, so it never tries to save under a missing label
   useEffect(() => {
-    if (isHydrated) localStorage.setItem("shopping-cart", JSON.stringify(cart));
-  }, [cart, isHydrated]);
+    if (user && isHydrated) {
+      localStorage.setItem(user.id, JSON.stringify(cart));
+    }
+  }, [cart, isHydrated, user]);
 
   const addToCart = (newItem: Omit<CartItem, "quantity">) => {
     setCart((prevCart) => {
