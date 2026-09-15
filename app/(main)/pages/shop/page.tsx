@@ -24,9 +24,9 @@ export interface PaginationMeta {
 export default function Page() {
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [displaySetting, setDisplaySetting] = useState<
-    "grid-cols-3" | "grid-rows-3"
-  >("grid-cols-3");
+  const [displaySetting, setDisplaySetting] = useState
+  <"grid-cols-3" | "grid-rows-3"> ("grid-cols-3");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Pagination State (Set default pageSize to 3)
   const [page, setPage] = useState<number>(1);
@@ -87,18 +87,34 @@ export default function Page() {
   return (
     <div>
       <Navbar />
-      <div className="flex">
+
+      {/* Mobile-only bar: shows a "Filters" button instead of the full sidebar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-300 lg:hidden">
+        <span className="font-medium text-[#5A2D0C]">
+          {meta.totalItems} products
+        </span>
+        <button
+          onClick={() => setIsFilterOpen(true)}
+          className="px-4 py-2 rounded-lg border border-[#5A2D0C] text-[#5A2D0C] text-sm font-medium"
+        >
+          Filters
+        </button>
+      </div>
+
+      <div className="flex flex-col lg:flex-row">
         <FilterSidebar
           filters={filters}
           onFiltersChange={handleFiltersChange}
+          isOpen={isFilterOpen}
+          onClose={() => setIsFilterOpen(false)}
         />
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {isLoading ? (
             <p className="text-center text-neutral-500 py-10">
               Loading products...
             </p>
           ) : (
-            <div className="px-20 py-6">
+            <div className="px-4 sm:px-8 lg:px-20 py-6">
               <Heading layout={displaySetting} setLayout={setDisplaySetting} />
               <ItemsGrid DisplaySetting={displaySetting} products={products} />
 

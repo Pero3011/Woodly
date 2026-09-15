@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronDown, Funnel } from "lucide-react";
+import { ChevronDown, Funnel, X } from "lucide-react";
 
 interface FilterSidebarProps {
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export interface Filters {
@@ -27,6 +29,8 @@ const INITIAL_FILTERS: Filters = {
 export default function FilterSidebar({
   filters,
   onFiltersChange,
+  isOpen = false,
+  onClose,
 }: FilterSidebarProps) {
   const toggleCategory = (cat: string) => {
     const next = filters.categories.includes(cat)
@@ -40,127 +44,154 @@ export default function FilterSidebar({
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-secondary p-6 text-[#2A1E17] border-r border-neutral-300 flex flex-col">
-      <div>
-        <h1 className="text-2xl font-bold mb-6 text-[#5A2D0C]">Filters</h1>
+    <>
+      {/* Backdrop: only visible on mobile while the drawer is open */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+        />
+      )}
 
-        {/* CATEGORY */}
-        <div className="mb-6">
-          <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
-            Category
-          </h2>
-          <div className="space-y-2.5">
-            {CATEGORIES.map((cat) => (
-              <label
-                key={cat}
-                className="flex items-center gap-3 cursor-pointer text-sm font-medium"
+      <aside
+        className={`
+          fixed top-0 left-0 h-screen w-72 z-50 transition-transform duration-300 ease-in-out
+          bg-secondary p-6 text-[#2A1E17] border-r border-neutral-300 flex flex-col overflow-y-auto
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+
+          lg:static lg:translate-x-0 lg:h-auto lg:min-h-screen lg:w-64 lg:z-auto
+        `}
+      >
+        <div className="flex items-center justify-between mb-6 lg:hidden">
+          <h1 className="text-2xl font-bold text-[#5A2D0C]">Filters</h1>
+          <button onClick={onClose} aria-label="Close filters">
+            <X className="w-5 h-5 text-[#5A2D0C]" />
+          </button>
+        </div>
+
+        <div>
+          <h1 className="hidden lg:block text-2xl font-bold mb-6 text-[#5A2D0C]">
+            Filters
+          </h1>
+
+          {/* CATEGORY */}
+          <div className="mb-6">
+            <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
+              Category
+            </h2>
+            <div className="space-y-2.5">
+              {CATEGORIES.map((cat) => (
+                <label
+                  key={cat}
+                  className="flex items-center gap-3 cursor-pointer text-sm font-medium"
+                >
+                  <input
+                    type="checkbox"
+                    checked={filters.categories.includes(cat)}
+                    onChange={() => toggleCategory(cat)}
+                    className="w-4 h-4 rounded border-gray-300 accent-[#5A2D0C] focus:ring-0 cursor-pointer"
+                  />
+                  <span>{cat}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* PRICE RANGE */}
+          <div className="mb-6">
+            <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
+              Price Range
+            </h2>
+            <div className="relative flex items-center mb-2">
+              <input
+                type="range"
+                min="100"
+                max="1000"
+                value={filters.maxPrice}
+                onChange={(e) =>
+                  onFiltersChange({
+                    ...filters,
+                    maxPrice: Number(e.target.value),
+                  })
+                }
+                className="w-full h-1.5 bg-[#E6D7C3] rounded-lg appearance-none cursor-pointer accent-[#5A2D0C]"
+              />
+            </div>
+            <div className="flex justify-between text-xs text-[#5A2D0C] font-medium">
+              <span>$100</span>
+              <span>
+                ${filters.maxPrice.toLocaleString()}
+                {filters.maxPrice >= 1000 ? "+" : ""}
+              </span>
+            </div>
+          </div>
+
+          {/* WOOD TYPE */}
+          <div className="mb-6">
+            <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
+              Wood Type
+            </h2>
+            <div className="space-y-2.5">
+              {WOOD_TYPES.map((wood) => (
+                <label
+                  key={wood}
+                  className="flex items-center gap-3 cursor-pointer text-sm font-medium"
+                >
+                  <input
+                    type="radio"
+                    name="wood-type"
+                    checked={filters.woodType === wood}
+                    onChange={() =>
+                      onFiltersChange({
+                        ...filters,
+                        // Clicking selected wood type again deselects it
+                        woodType: filters.woodType === wood ? null : wood,
+                      })
+                    }
+                    className="w-4 h-4 border-gray-300 text-[#5A2D0C] focus:ring-0 cursor-pointer accent-[#5A2D0C]"
+                  />
+                  <span>{wood}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* SORT BY */}
+          <div className="mb-6">
+            <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
+              Sort By
+            </h2>
+            <div className="relative">
+              <select
+                value={filters.sortBy}
+                onChange={(e) =>
+                  onFiltersChange({
+                    ...filters,
+                    sortBy: e.target.value as Filters["sortBy"],
+                  })
+                }
+                className="w-full bg-white border border-[#E2D5C3] rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#5A2D0C] cursor-pointer"
               >
-                <input
-                  type="checkbox"
-                  checked={filters.categories.includes(cat)}
-                  onChange={() => toggleCategory(cat)}
-                  className="w-4 h-4 rounded border-gray-300 accent-[#5A2D0C] focus:ring-0 cursor-pointer"
-                />
-                <span>{cat}</span>
-              </label>
-            ))}
+                <option value="newest">Newest First</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500 pointer-events-none" />
+            </div>
           </div>
         </div>
 
-        {/* PRICE RANGE */}
-        <div className="mb-6">
-          <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
-            Price Range
-          </h2>
-          <div className="relative flex items-center mb-2">
-            <input
-              type="range"
-              min="100"
-              max="1000"
-              value={filters.maxPrice}
-              onChange={(e) =>
-                onFiltersChange({
-                  ...filters,
-                  maxPrice: Number(e.target.value),
-                })
-              }
-              className="w-full h-1.5 bg-[#E6D7C3] rounded-lg appearance-none cursor-pointer accent-[#5A2D0C]"
-            />
-          </div>
-          <div className="flex justify-between text-xs text-[#5A2D0C] font-medium">
-            <span>$100</span>
-            <span>
-              ${filters.maxPrice.toLocaleString()}
-              {filters.maxPrice >= 1000 ? "+" : ""}
-            </span>
-          </div>
+        {/* CLEAR FILTERS BUTTON */}
+        <div className="pt-4 border-t border-neutral-300">
+          <button
+            onClick={handleClearFilters}
+            className="w-full flex justify-center items-center gap-2 px-4 py-2.5 rounded-lg border border-[#5A2D0C] text-[#5A2D0C] font-medium text-sm transition-all hover:bg-[#5A2D0C] hover:text-[#F5EFE4]"
+          >
+            <Funnel className="w-4 h-4" />
+            <span>Clear Filters</span>
+          </button>
         </div>
-
-        {/* WOOD TYPE */}
-        <div className="mb-6">
-          <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
-            Wood Type
-          </h2>
-          <div className="space-y-2.5">
-            {WOOD_TYPES.map((wood) => (
-              <label
-                key={wood}
-                className="flex items-center gap-3 cursor-pointer text-sm font-medium"
-              >
-                <input
-                  type="radio"
-                  name="wood-type"
-                  checked={filters.woodType === wood}
-                  onChange={() =>
-                    onFiltersChange({
-                      ...filters,
-                      // Clicking selected wood type again deselects it
-                      woodType: filters.woodType === wood ? null : wood,
-                    })
-                  }
-                  className="w-4 h-4 border-gray-300 text-[#5A2D0C] focus:ring-0 cursor-pointer accent-[#5A2D0C]"
-                />
-                <span>{wood}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* SORT BY */}
-        <div className="mb-6">
-          <h2 className="uppercase font-sans text-xs font-semibold tracking-wider text-[#6D5A4D] mb-3">
-            Sort By
-          </h2>
-          <div className="relative">
-            <select
-              value={filters.sortBy}
-              onChange={(e) =>
-                onFiltersChange({
-                  ...filters,
-                  sortBy: e.target.value as Filters["sortBy"],
-                })
-              }
-              className="w-full bg-white border border-[#E2D5C3] rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#5A2D0C] cursor-pointer"
-            >
-              <option value="newest">Newest First</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500 pointer-events-none" />
-          </div>
-        </div>
-      </div>
-
-      {/* CLEAR FILTERS BUTTON */}
-      <div className="pt-4 border-t border-neutral-300">
-        <button
-          onClick={handleClearFilters}
-          className="w-full flex justify-center items-center gap-2 px-4 py-2.5 rounded-lg border border-[#5A2D0C] text-[#5A2D0C] font-medium text-sm transition-all hover:bg-[#5A2D0C] hover:text-[#F5EFE4]"
-        >
-          <Funnel className="w-4 h-4" />
-          <span>Clear Filters</span>
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
