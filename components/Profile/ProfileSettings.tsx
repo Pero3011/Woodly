@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import BottomAlert from "../UserNotification/BottomAlert";
+import { useAuth } from "@/context/AuthContext";
 
 interface SessionUser {
   id: number;
@@ -24,7 +25,7 @@ interface SessionUser {
 export default function ProfileSettings() {
   const route = useRouter();
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const {user} = useAuth()
   const [message, setMessage] = useState<string>();
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
@@ -36,13 +37,6 @@ export default function ProfileSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((res) => res.json())
-      .then((data) => setUser(data.user))
-      .catch(() => setUser(null));
-  }, []);
 
   // Seed the draft fields whenever we (re)load the user or open the modal.
   useEffect(() => {
@@ -115,7 +109,6 @@ export default function ProfileSettings() {
         return;
       }
 
-      setUser(data.user);
       setIsEditOpen(false);
       setIsVisible(true);
       setMessage("User info updated successfully!");
