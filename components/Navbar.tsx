@@ -1,36 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { ShoppingCart, CircleUser, LogOut} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import CartSideBar from "./Cart/Sidebar";
-
-interface SessionUser {
-  id: number;
-  name: string;
-  role: string;
-}
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {user,loading,refreshUser} = useAuth()
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((res) => res.json())
-      .then((data) => setUser(data.user))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
-
   async function handleSignOut() {
     await fetch("/api/auth/signOut", { method: "POST" });
-    setUser(null);
+    await refreshUser();
     router.push("/auth");
     router.refresh();
   }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeClosed } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 function GoogleIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
@@ -37,6 +38,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { refreshUser } = useAuth();
 
   useEffect(() => {
     setMounted(true);
@@ -56,6 +58,7 @@ export default function AuthPage() {
 
       if (response.ok) {
         const data = await response.json();
+        await refreshUser();
         router.push("/");
         router.refresh();
         console.log(`User ${data.name || "account"} created successfully!`);
@@ -84,6 +87,7 @@ export default function AuthPage() {
 
       if (response.ok) {
         console.log(`User Logged in successfully!`);
+        await refreshUser();
         router.push("/");
         router.refresh();
       } else {
