@@ -1,5 +1,6 @@
 import { ShoppingCart } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 interface ItemCardProps {
   id: string;
@@ -13,7 +14,6 @@ interface ItemCardProps {
 }
 
 export default function ItemsCards({
-  id,
   image,
   category,
   price,
@@ -86,7 +86,10 @@ export default function ItemsCards({
           className={`flex items-center justify-center gap-2 bg-[#5C4530] hover:bg-[#4A3826] transition-colors text-[#F5EFE4] text-xs font-semibold uppercase tracking-wider py-3.5 rounded-lg ${
             isList ? "w-fit px-6" : "w-full"
           }`}
-          onClick={onAddToCart}
+          onClick={() => {
+            onAddToCart 
+            toast(`${title} Added Successfully`)
+          }}
         >
           <ShoppingCart size={16} />
           Add to Collection

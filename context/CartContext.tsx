@@ -67,6 +67,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             : item,
         );
       }
+      
       return [...prevCart, { ...newItem, quantity: 1 }];
     });
   };

@@ -11,7 +11,6 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import BottomAlert from "../UserNotification/BottomAlert";
 import { useAuth } from "@/context/AuthContext";
 
 interface SessionUser {
@@ -366,13 +365,6 @@ export default function ProfileSettings() {
           {isDeleting ? "Deleting..." : "Delete Account"}
         </button>
       </div>
-      <BottomAlert
-        message={message}
-        isVisible={isVisible}
-        onClose={function (): void {
-          setIsVisible(false);
-        }}
-      />
     </div>
   );
 }

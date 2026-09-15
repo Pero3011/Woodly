@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ReceiptText, X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
+import Link from "next/link";
+
 
 interface CartSideBarProps {
   isOpen: boolean;
@@ -61,7 +63,7 @@ export default function CartSideBar({ isOpen, onClose }: CartSideBarProps) {
                     key={item.id}
                     className="flex gap-4 pb-4 border-b border-neutral-300 last:border-b-0"
                   >
-                    <div className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-[#FFF8F3] border border-neutral-300">
+                    <div className="relative w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-secondary border border-neutral-300">
                       {item.image && (
                         <Image
                           src={item.image}
@@ -135,10 +137,12 @@ export default function CartSideBar({ isOpen, onClose }: CartSideBarProps) {
                   </span>
                 </div>
 
-                <button className="w-full flex items-center justify-center gap-2 bg-[#5A2D0C] hover:bg-[#4A2409] transition-colors text-[#F5EFE4] text-sm font-semibold uppercase tracking-wider py-3.5 rounded-lg">
-                  <span>Checkout</span>
-                  <ReceiptText className="w-4 h-4" />
-                </button>
+                <Link href={"/pages/checkout"}>
+                  <button className="w-full flex items-center justify-center gap-2 bg-[#5A2D0C] hover:bg-[#4A2409] transition-colors text-[#F5EFE4] text-sm font-semibold uppercase tracking-wider py-3.5 rounded-lg">
+                    <span>Checkout</span>
+                    <ReceiptText className="w-4 h-4" />
+                  </button>
+                </Link>
               </div>
             )}
           </motion.div>
