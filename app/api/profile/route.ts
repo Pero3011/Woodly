@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getSession, updateSessionUser } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import oracledb from "oracledb";
 import { cookies } from "next/headers";
 
+//GET the current logged in User
 export async function GET() {
   const session = await getSession();
   if (!session) {

@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
+import { useAuth } from "./AuthContext";
 
 export interface CartItem {
   id: string;
@@ -19,30 +20,14 @@ interface CartContextType {
   cartCount: number;
 }
 
-interface SessionUser {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-}
-
 //Creating an empty box
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [user, setUser] = useState<SessionUser | null>(null);
-
-  //GET the logged in user and store him in the user state
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((res) => res.json())
-      .then((data) => setUser(data.user))
-      .catch(() => setUser(null));
-  }, []);
-
+  const { user } = useAuth();
+  
   //Check if the user has anything in the cart before and pull it
   useEffect(() => {
     if (user) {
