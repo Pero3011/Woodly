@@ -32,12 +32,7 @@ export default function ItemsGrid({ DisplaySetting, products }: Display) {
             transition={{ duration: 1, delay: i * 0.1 }}
             key={item.prod_id ?? i}
           >
-            {/*
-              Whole card navigates to the product's detail page.
-              ADJUST THIS PATH to match your real product-detail route
-              (this file's structure doesn't show a page.tsx for it yet).
-            */}
-            <Link href={`/shop/${item.prod_id}`}>
+            <Link href={`/pages/shop/${item.prod_id}`}>
               <ItemsCards
                 prod_id={item.prod_id}
                 image={item.prod_img}
