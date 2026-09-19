@@ -20,21 +20,39 @@ interface CartContextType {
   cartCount: number;
 }
 
-//Creating an empty box
+// How many milliseconds are in 7 days
+// 7 days * 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
+const CART_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
+// 1. Creating an empty box
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const { user } = useAuth();
-  
-  //Check if the user has anything in the cart before and pull it
+
+  // Check if the user has anything in the cart before and pull it
   useEffect(() => {
     if (user) {
-      const savedCart = localStorage.getItem(user.id);
-      if (savedCart) {
+      const savedRaw = localStorage.getItem(user.id);
+      console.log(savedRaw)
+
+      if (savedRaw) {
         try {
-          setCart(JSON.parse(savedCart));
+          const savedBundle = JSON.parse(savedRaw);
+          const savedCart: CartItem[] = savedBundle.cart;
+          const savedAt: number = savedBundle.timestamp;
+
+          // How much time has passed since we last saved this cart
+          const elapsed = Date.now() - savedAt;
+
+          if (elapsed > CART_EXPIRY_MS) {
+            setCart([]);
+          } else {
+            // Still fresh — safe to use
+            setCart(savedCart);
+          }
         } catch (error) {
           console.error("Failed to parse cart storage data:", error);
           setCart([]);
@@ -49,11 +67,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsHydrated(true);
   }, [user]);
 
-  //Save the cart back to the correct drawer whenever it changes
-  //Watch list now includes "user" too, so it never tries to save under a missing label
+  // Save the cart back to the correct drawer whenever it changes
+  // Watch list now includes "user" too, so it never tries to save under a missing label
   useEffect(() => {
     if (user && isHydrated) {
-      localStorage.setItem(user.id, JSON.stringify(cart));
+      // Bundle the cart together with a fresh "saved at" timestamp
+      // so the 7-day countdown restarts every time the cart changes
+      const bundle = {
+        cart: cart,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(user.id, JSON.stringify(bundle));
     }
   }, [cart, isHydrated, user]);
 
@@ -67,7 +91,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             : item,
         );
       }
-      
+
       return [...prevCart, { ...newItem, quantity: 1 }];
     });
   };

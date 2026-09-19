@@ -87,7 +87,7 @@ export default function ItemsCards({
             isList ? "w-fit px-6" : "w-full"
           }`}
           onClick={() => {
-            onAddToCart 
+            onAddToCart() 
             toast(`${title} Added Successfully`)
           }}
         >
