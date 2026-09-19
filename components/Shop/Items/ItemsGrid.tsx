@@ -2,6 +2,7 @@
 import { useCart } from "@/context/CartContext";
 import ItemsCards from "./ItemsCards";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 interface Display {
   DisplaySetting: "grid-cols-3" | "grid-rows-3";
@@ -20,6 +21,7 @@ export default function ItemsGrid({ DisplaySetting, products }: Display) {
       </p>
     );
   }
+
   return (
     <div>
       <div className={`grid grid-cols-1 ${gridClass} gap-6`}>
@@ -30,23 +32,30 @@ export default function ItemsGrid({ DisplaySetting, products }: Display) {
             transition={{ duration: 1, delay: i * 0.1 }}
             key={item.prod_id ?? i}
           >
-            <ItemsCards
-              id={item.id}
-              image={item.prod_img}
-              category={item.prod_category}
-              price={item.prod_price}
-              title={item.prod_name}
-              description={item.prod_description}
-              layout={isList ? "list" : "grid"}
-              onAddToCart={() =>
-                addToCart({
-                  id: item.prod_id,
-                  name: item.prod_name,
-                  price: Number(item.prod_price),
-                  image: item.prod_img,
-                })
-              }
-            />
+            {/*
+              Whole card navigates to the product's detail page.
+              ADJUST THIS PATH to match your real product-detail route
+              (this file's structure doesn't show a page.tsx for it yet).
+            */}
+            <Link href={`/shop/${item.prod_id}`}>
+              <ItemsCards
+                prod_id={item.prod_id}
+                image={item.prod_img}
+                category={item.prod_category}
+                price={item.prod_price}
+                title={item.prod_name}
+                description={item.prod_description}
+                layout={isList ? "list" : "grid"}
+                onAddToCart={() =>
+                  addToCart({
+                    id: item.prod_id,
+                    name: item.prod_name,
+                    price: Number(item.prod_price),
+                    image: item.prod_img,
+                  })
+                }
+              />
+            </Link>
           </motion.div>
         ))}
       </div>

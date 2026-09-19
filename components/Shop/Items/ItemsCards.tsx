@@ -3,7 +3,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 
 interface ItemCardProps {
-  id: string;
+  prod_id: string;
   image: string;
   category: string;
   price: string;
@@ -27,74 +27,74 @@ export default function ItemsCards({
   const isList = layout === "list";
 
   return (
-    <div
-      className={`group bg-[#EFE6D8] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 ${
-        isList ? "flex flex-row items-stretch" : ""
-      }`}
-    >
-      {/* Image Container */}
       <div
-        className={`relative flex items-center justify-center overflow-hidden shrink-0 ${
-          isList ? "w-48 aspect-square" : "w-full aspect-square"
-        }`}
-        style={{
-          backgroundColor: "#FFF8F3",
-          backgroundImage: fretworkPattern,
-          backgroundRepeat: "repeat",
-        }}
-      >
-        <div className="relative w-11/12 h-5/6 z-10 transition-transform duration-500 group-hover:scale-[1.03]">
-          <Image
-            src={image}
-            alt={title}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-            className="object-contain drop-shadow-[0_10px_20px_rgba(107,66,38,0.15)]"
-          />
-        </div>
-      </div>
-
-      {/* Content */}
-      <div
-        className={`px-6 pt-5 pb-6 flex flex-col ${
-          isList ? "flex-1 justify-center" : ""
+        className={`group bg-[#EFE6D8] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 ${
+          isList ? "flex flex-row items-stretch" : ""
         }`}
       >
+        {/* Image Container */}
         <div
-          className={`flex items-center justify-between mb-4 ${
-            isList ? "flex-row-reverse justify-end gap-3" : ""
+          className={`relative flex items-center justify-center overflow-hidden shrink-0 ${
+            isList ? "w-48 aspect-square" : "w-full aspect-square"
           }`}
-        >
-          <span className="inline-flex items-center gap-1.5 bg-[#3A3530] text-[#F5EFE4] text-[10px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full">
-            <span className="w-1 h-1 rounded-full bg-[#C97A3D]" />
-            {category}
-          </span>
-          <span className="bg-[#D98A3D] text-white text-base font-semibold px-4 py-1.5 rounded-lg">
-            {price} EGP
-          </span>
-        </div>
-
-        <h2 className="font-serif text-2xl text-[#3A2E22] leading-snug mb-2">
-          {title}
-        </h2>
-
-        <p className="text-sm text-[#6B5F52] leading-relaxed mb-5">
-          {description}
-        </p>
-
-        <button
-          className={`flex items-center justify-center gap-2 bg-[#5C4530] hover:bg-[#4A3826] transition-colors text-[#F5EFE4] text-xs font-semibold uppercase tracking-wider py-3.5 rounded-lg ${
-            isList ? "w-fit px-6" : "w-full"
-          }`}
-          onClick={() => {
-            onAddToCart() 
-            toast(`${title} Added Successfully`)
+          style={{
+            backgroundColor: "#FFF8F3",
+            backgroundImage: fretworkPattern,
+            backgroundRepeat: "repeat",
           }}
         >
-          <ShoppingCart size={16} />
-          Add to Collection
-        </button>
+          <div className="relative w-11/12 h-5/6 z-10 transition-transform duration-500 group-hover:scale-[1.03]">
+            <Image
+              src={image}
+              alt={title}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              className="object-contain drop-shadow-[0_10px_20px_rgba(107,66,38,0.15)]"
+            />
+          </div>
+        </div>
+
+        {/* Content */}
+        <div
+          className={`px-6 pt-5 pb-6 flex flex-col ${
+            isList ? "flex-1 justify-center" : ""
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between mb-4 ${
+              isList ? "flex-row-reverse justify-end gap-3" : ""
+            }`}
+          >
+            <span className="inline-flex items-center gap-1.5 bg-[#3A3530] text-[#F5EFE4] text-[10px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full">
+              <span className="w-1 h-1 rounded-full bg-[#C97A3D]" />
+              {category}
+            </span>
+            <span className="bg-[#D98A3D] text-white text-base font-semibold px-4 py-1.5 rounded-lg">
+              {price} EGP
+            </span>
+          </div>
+
+          <h2 className="font-serif text-2xl text-[#3A2E22] leading-snug mb-2">
+            {title}
+          </h2>
+
+          <p className="text-sm text-[#6B5F52] leading-relaxed mb-5">
+            {description}
+          </p>
+
+          <button
+            className={`flex items-center justify-center gap-2 bg-[#5C4530] hover:bg-[#4A3826] transition-colors text-[#F5EFE4] text-xs font-semibold uppercase tracking-wider py-3.5 rounded-lg ${
+              isList ? "w-fit px-6" : "w-full"
+            }`}
+            onClick={() => {
+              onAddToCart();
+              toast(`${title} Added Successfully`);
+            }}
+          >
+            <ShoppingCart size={16} />
+            Add to Collection
+          </button>
+        </div>
       </div>
-    </div>
   );
 }
