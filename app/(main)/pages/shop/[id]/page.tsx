@@ -1,4 +1,6 @@
+import { getDatabaseConnection } from "@/lib/db";
 import { notFound } from "next/navigation";
+import oracledb from "oracledb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/FooterPage";
 import Details from "@/components/PieceDetails/Details";
@@ -12,16 +14,43 @@ interface PageProps {
 export default async function PieceDetailsPage({ params }: PageProps) {
   const { id } = await params;
 
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/shop/${id}`,
-    { cache: "no-store" },
-  );
+  let connection;
+  let row;
 
-  if (!res.ok) {
-    notFound();
+  try {
+    connection = await getDatabaseConnection();
+
+    // Same RAWTOHEX comparison as the API route — PROD_ID is RAW (binary),
+    // and `id` here is the hex string version of it
+    const query = `
+      SELECT PROD_ID, NAME, DESCRIPTION, RATING, CATEGORY, PRICE, IMAGE
+      FROM products
+      WHERE RAWTOHEX(PROD_ID) = UPPER(:id)
+    `;
+
+    const result = await connection.execute(
+      query,
+      { id },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    );
+
+    row = (result.rows as any[])?.[0];
+  } finally {
+    // Always release the connection, even if the query above throws
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 
-  const { product } = await res.json();
+  // No product with this id — show Next.js's not-found page
+  // instead of crashing or rendering empty fields
+  if (!row) {
+    notFound();
+  }
 
   return (
     <div className="min-h-screen bg-[#FBF6EF]">
@@ -32,10 +61,12 @@ export default async function PieceDetailsPage({ params }: PageProps) {
         </div>
         <div className="col-span-2">
           <Details
-            Title={product.prod_name}
-            Category={product.prod_category}
-            Price={product.prod_price}
-            Description={product.prod_description}
+            Prod_id={row.PROD_ID.toString("hex")}
+            Prod_img={row.IMAGE}
+            Title={row.NAME}
+            Category={row.CATEGORY}
+            Price={row.PRICE}
+            Description={row.DESCRIPTION}
           />
         </div>
       </div>
