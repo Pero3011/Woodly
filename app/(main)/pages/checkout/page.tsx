@@ -7,9 +7,7 @@ import Navbar from "@/components/Navbar";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import Receipt, { ReceiptOrderData } from "@/components/Checkout/Receipt";
-import ConfirmOrder, {
-  ConfirmOrderSummary,
-} from "@/components/Checkout/ConfirmOrder";
+import ConfirmOrder from "@/components/Checkout/ConfirmOrder";
 
 // Placeholder rates until real shipping/tax logic is wired up to the backend
 const SHIPPING_RATE = 0.18;
@@ -48,11 +46,10 @@ export default function CheckoutPage() {
   const [orderData, setOrderData] = useState<ReceiptOrderData | null>(null);
 
   // NEW: the confirmation step sits between "Place Order" and the receipt.
-  // isConfirmOpen controls that in-between modal; confirmSummary is the
-  // small snapshot it needs (just enough to sanity-check, not the full order).
+  // isConfirmOpen controls that in-between modal. It reuses `orderData`
+  // below (built the moment "Place Order" is clicked) — no separate
+  // lightweight summary needed since ConfirmOrder now shows the full order.
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [confirmSummary, setConfirmSummary] =
-    useState<ConfirmOrderSummary | null>(null);
 
   const handleShippingChange = (
     field: keyof typeof shipping,
@@ -65,22 +62,10 @@ export default function CheckoutPage() {
   const shippingCost = SHIPPING_RATE * cartTotal;
   const total = cartTotal + shippingCost + tax;
 
-  // STEP 1: "Place Order" no longer opens the receipt directly. It just
-  // gathers a small summary and opens the confirmation modal.
+  // STEP 1: "Place Order" builds the full order snapshot right away — the
+  // confirmation modal needs the complete data (items, shipping, totals)
+  // to actually show the order, not just a summary.
   const handleRequestPlaceOrder = () => {
-    setConfirmSummary({
-      itemCount: cartCount,
-      shippingCity: shipping.city,
-      total,
-    });
-    setIsConfirmOpen(true);
-  };
-
-  // STEP 2: only runs once the person clicks "Confirm order" inside
-  // ConfirmOrder. This is where the order is actually placed — it builds
-  // the full ReceiptOrderData snapshot, closes the confirmation modal,
-  // and opens the receipt.
-  const handleConfirmOrder = () => {
     setOrderData({
       orderId: crypto.randomUUID().split("-")[0].toUpperCase(),
       orderDate: new Date().toLocaleDateString(undefined, {
@@ -102,6 +87,13 @@ export default function CheckoutPage() {
       tax,
       total,
     });
+    setIsConfirmOpen(true);
+  };
+
+  // STEP 2: only runs once the person clicks "Confirm order" inside
+  // ConfirmOrder. orderData is already built — this just swaps which
+  // modal is showing.
+  const handleConfirmOrder = () => {
     setIsConfirmOpen(false);
     setIsOpen(true);
   };
@@ -367,7 +359,7 @@ export default function CheckoutPage() {
                 isOpen={isConfirmOpen}
                 onCancel={() => setIsConfirmOpen(false)}
                 onConfirm={handleConfirmOrder}
-                summary={confirmSummary}
+                orderData={orderData}
               />
 
               {/* Receipt Modal — only opens after confirmation */}
