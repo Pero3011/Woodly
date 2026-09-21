@@ -6,10 +6,22 @@ import { Minus, Plus, Trash2, Lock, ShoppingBag } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import Receipt, { ReceiptOrderData } from "@/components/Checkout/Receipt";
+import ConfirmOrder, {
+  ConfirmOrderSummary,
+} from "@/components/Checkout/ConfirmOrder";
 
 // Placeholder rates until real shipping/tax logic is wired up to the backend
-const SHIPPING_COST = 18.5;
+const SHIPPING_RATE = 0.18;
 const TAX_RATE = 0.0738;
+
+// Human-readable labels for the payment options CheckoutPage lets you pick.
+// Kept here (not inside Receipt) because Receipt shouldn't need to know
+// about "visa" | "applepay" at all — it just displays a string.
+const PAYMENT_LABELS: Record<"visa" | "applepay", string> = {
+  visa: "Visa ending in 4421",
+  applepay: "Apple Pay",
+};
 
 export default function CheckoutPage() {
   const { cart, removeFromCart, updateQuantity, cartTotal, cartCount } =
@@ -28,6 +40,19 @@ export default function CheckoutPage() {
     "visa",
   );
   const [discountCode, setDiscountCode] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Holds the snapshot of the order once it's actually placed (after
+  // confirmation). Starts as null — Receipt already knows to render
+  // nothing until this is filled in.
+  const [orderData, setOrderData] = useState<ReceiptOrderData | null>(null);
+
+  // NEW: the confirmation step sits between "Place Order" and the receipt.
+  // isConfirmOpen controls that in-between modal; confirmSummary is the
+  // small snapshot it needs (just enough to sanity-check, not the full order).
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmSummary, setConfirmSummary] =
+    useState<ConfirmOrderSummary | null>(null);
 
   const handleShippingChange = (
     field: keyof typeof shipping,
@@ -37,7 +62,49 @@ export default function CheckoutPage() {
   };
 
   const tax = cartTotal * TAX_RATE;
-  const total = cartTotal + SHIPPING_COST + tax;
+  const shippingCost = SHIPPING_RATE * cartTotal;
+  const total = cartTotal + shippingCost + tax;
+
+  // STEP 1: "Place Order" no longer opens the receipt directly. It just
+  // gathers a small summary and opens the confirmation modal.
+  const handleRequestPlaceOrder = () => {
+    setConfirmSummary({
+      itemCount: cartCount,
+      shippingCity: shipping.city,
+      total,
+    });
+    setIsConfirmOpen(true);
+  };
+
+  // STEP 2: only runs once the person clicks "Confirm order" inside
+  // ConfirmOrder. This is where the order is actually placed — it builds
+  // the full ReceiptOrderData snapshot, closes the confirmation modal,
+  // and opens the receipt.
+  const handleConfirmOrder = () => {
+    setOrderData({
+      orderId: crypto.randomUUID().split("-")[0].toUpperCase(),
+      orderDate: new Date().toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+      items: cart.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+      })),
+      shipping,
+      paymentMethod: PAYMENT_LABELS[selectedPayment],
+      subtotal: cartTotal,
+      shippingCost,
+      tax,
+      total,
+    });
+    setIsConfirmOpen(false);
+    setIsOpen(true);
+  };
 
   return (
     <div>
@@ -266,7 +333,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between">
                     <span className="text-white/70">Shipping (Express)</span>
                     <span className="font-medium">
-                      ${SHIPPING_COST.toFixed(2)}
+                      ${shippingCost.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -282,7 +349,10 @@ export default function CheckoutPage() {
                   </span>
                 </div>
 
-                <button className="w-full flex items-center justify-center gap-2 bg-[#5A2D0C] hover:bg-[#4A2409] transition-colors text-[#F5EFE4] text-sm font-semibold uppercase tracking-wider py-3.5 rounded-lg">
+                <button
+                  className="w-full flex items-center justify-center gap-2 bg-[#5A2D0C] hover:bg-[#4A2409] transition-colors text-[#F5EFE4] text-sm font-semibold uppercase tracking-wider py-3.5 rounded-lg"
+                  onClick={handleRequestPlaceOrder}
+                >
                   Place Order
                   <Lock className="w-4 h-4" />
                 </button>
@@ -291,6 +361,21 @@ export default function CheckoutPage() {
                   Secure transaction with Artisan encryption
                 </p>
               </div>
+
+              {/* Confirmation step — shown first, before the order is placed */}
+              <ConfirmOrder
+                isOpen={isConfirmOpen}
+                onCancel={() => setIsConfirmOpen(false)}
+                onConfirm={handleConfirmOrder}
+                summary={confirmSummary}
+              />
+
+              {/* Receipt Modal — only opens after confirmation */}
+              <Receipt
+                isOpen={isOpen}
+                onClose={() => setIsOpen(false)}
+                orderData={orderData}
+              />
 
               {/* Discount Code */}
               <div className="bg-secondary rounded-xl p-4 border border-neutral-300">
