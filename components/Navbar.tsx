@@ -37,7 +37,7 @@ export default function Navbar() {
 
           {isMenuOpen && <NavbarSidebar onClose={() => setIsMenuOpen(false)} />}
 
-          <div className="hidden md:block relative w-18.75 h-18.75">
+          <div className="hidden sm:block relative w-18.75 h-18.75">
             <Image
               src="/logo.png"
               alt="logo"

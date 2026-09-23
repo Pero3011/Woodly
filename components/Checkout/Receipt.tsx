@@ -139,13 +139,6 @@ export default function Receipt({ isOpen, onClose, orderData }: ReceiptProps) {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={onClose}
-                    aria-label="Close receipt"
-                    className="text-[#6D5A4D] hover:text-[#5A2D0C] transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
                 </div>
 
                 {/* Body — items list */}
