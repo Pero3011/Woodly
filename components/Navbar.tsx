@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ShoppingCart, CircleUser, LogOut} from "lucide-react";
+import { ShoppingCart, CircleUser, LogOut, Menu} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import CartSideBar from "./Cart/Sidebar";
 import { useAuth } from "@/context/AuthContext";
+import NavbarSidebar from "./NavbarSidebar";
 
 export default function Navbar() {
   const {user,loading,refreshUser} = useAuth()
   const [isOpen, setIsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
   async function handleSignOut() {
@@ -29,7 +31,13 @@ export default function Navbar() {
       <nav className="flex justify-between items-center px-6 md:px-16 lg:px-24 bg-secondary text-primary border-b border-neutral-300 w-full h-18">
         {/* LHS */}
         <div className="flex items-center gap-6 md:gap-10">
-          <div className="relative w-18.75 h-18.75">
+          <button onClick={() => setIsMenuOpen(true)}>
+            <Menu className="md:hidden " />
+          </button>
+
+          {isMenuOpen && <NavbarSidebar onClose={() => setIsMenuOpen(false)} />}
+
+          <div className="hidden md:block relative w-18.75 h-18.75">
             <Image
               src="/logo.png"
               alt="logo"
