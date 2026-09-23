@@ -13,20 +13,12 @@ import {
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 
-interface SessionUser {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-}
 
 export default function ProfileSettings() {
   const route = useRouter();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const {user} = useAuth()
-  const [message, setMessage] = useState<string>();
-  const [isVisible, setIsVisible] = useState<boolean>(false);
+
 
   // Editable form state — separate from `user` so the modal has its own
   // draft that only overwrites `user` once the save succeeds.
@@ -109,8 +101,6 @@ export default function ProfileSettings() {
       }
 
       setIsEditOpen(false);
-      setIsVisible(true);
-      setMessage("User info updated successfully!");
     } catch (err) {
       setFormError("Network error. Please check your connection.");
     } finally {
@@ -130,16 +120,12 @@ export default function ProfileSettings() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        setMessage(data?.error || "Failed to delete account.");
-        setIsVisible(true);
         return;
       }
 
       // Session cookie is cleared server-side; redirect to logged-out state.
       window.location.href = "/";
     } catch (err) {
-      setMessage("Network error. Please check your connection.");
-      setIsVisible(true);
     } finally {
       setIsDeleting(false);
     }

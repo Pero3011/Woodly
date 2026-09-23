@@ -5,6 +5,10 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X, CheckCircle2, Download, Loader2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
+import { useCart } from "@/context/CartContext";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
 
 // ---- Types ------------------------------------------------------------
 export interface ReceiptItem {
@@ -45,6 +49,8 @@ interface ReceiptProps {
 export default function Receipt({ isOpen, onClose, orderData }: ReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const { clearCart } = useCart()
+  const route = useRouter();
 
   if (!orderData) return null;
 
@@ -78,7 +84,14 @@ export default function Receipt({ isOpen, onClose, orderData }: ReceiptProps) {
     } finally {
       setIsExporting(false);
     }
-    };
+  };
+  
+  const handleContinueShoppingbtn = () => {
+    onClose()
+    clearCart()
+    route.push("/pages/shop")
+    toast("Order Placed Successfully")
+  }
     
   return (
     <AnimatePresence>
@@ -204,7 +217,7 @@ export default function Receipt({ isOpen, onClose, orderData }: ReceiptProps) {
                 </button>
 
                 <button
-                  onClick={onClose}
+                  onClick={handleContinueShoppingbtn}
                   className="w-full rounded-md bg-[#5A2D0C] text-white py-2.5 text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Continue Shopping
