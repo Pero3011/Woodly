@@ -1,5 +1,5 @@
 import { getDatabaseConnection } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import oracledb from "oracledb";
 
 export async function GET(

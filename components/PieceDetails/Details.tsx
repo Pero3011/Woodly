@@ -139,7 +139,7 @@ export default function Details({
                 price: Price,
                 image: Prod_img,
               });
-            toast(`${Title} Added Successfully`);
+            toast.success(`${Title} Added Successfully`);
           }}
         >
           <ShoppingCart size={16} />

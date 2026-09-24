@@ -90,7 +90,7 @@ export default function ItemsCards({
             e.preventDefault();
             e.stopPropagation();
             onAddToCart();
-            toast(`${title} Added Successfully`);
+            toast.success(`${title} Added Successfully`);
           }}
         >
           <ShoppingCart size={16} />

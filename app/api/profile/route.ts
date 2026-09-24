@@ -21,6 +21,7 @@ export async function GET() {
   });
 }
 
+//UPDATE Logged In user Data
 export async function PUT(request: Request) {
   let connection;
 
@@ -101,6 +102,7 @@ export async function PUT(request: Request) {
   }
 }
 
+//DELETE user
 export async function DELETE() {
   let connection;
 
