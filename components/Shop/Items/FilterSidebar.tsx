@@ -16,8 +16,8 @@ export interface Filters {
   sortBy: "newest" | "price-asc" | "price-desc";
 }
 
-const CATEGORIES = ["Wall Art", "Living Room", "Decor", "Desk Accessories"];
-const WOOD_TYPES = ["Walnut", "Oak", "Maple"];
+const CATEGORIES = ["Wall Decor", "Living Room", "Decor", "Desk Accessories"];
+const WOOD_TYPES = ["walnut", "oak", "maple"];
 
 const INITIAL_FILTERS: Filters = {
   categories: [],

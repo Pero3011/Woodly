@@ -20,7 +20,7 @@ export default function ItemsCards({
   title,
   description,
   layout = "grid",
-  onAddToCart
+  onAddToCart,
 }: ItemCardProps) {
   const fretworkPattern = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%238A7F72' stroke-width='1' stroke-opacity='0.12'%3E%3Cpath d='M0 0h20v20H0zm20 20h20v20H20z'/%3E%3Cpath stroke='%236B4226' stroke-opacity='0.08' d='M0 20l20-20M20 40l20-20M0 20l20 20M20 0l20 20'/%3E%3C/g%3E%3C/svg%3E")`;
 
@@ -50,6 +50,7 @@ export default function ItemsCards({
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
             className="object-contain drop-shadow-[0_10px_20px_rgba(107,66,38,0.15)]"
+            loading="eager"
           />
         </div>
       </div>

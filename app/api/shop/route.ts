@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // 2. Extract Filter & Sorting Parameters
-    const categoryParam = searchParams.get("category"); // e.g. "Electronics,Clothing"
+    const categoryParam = searchParams.get("category");
     const woodType = searchParams.get("woodType");
     const priceParam = searchParams.get("price");
     const sortBy = searchParams.get("sortBy") || "newest";
@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Wood Type Filter (Search across NAME and DESCRIPTION)
+    // Wood Type Filter (Filtering by the direct WOOD_TYPE column)
     if (woodType) {
-      filterClause += ` AND (LOWER(NAME) LIKE '%' || :woodType || '%' OR LOWER(DESCRIPTION) LIKE '%' || :woodType || '%')`;
+      filterClause += ` AND WOOD_TYPE = :woodType`;
       binds.woodType = woodType.toLowerCase();
     }
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     });
     const totalItems = (countResult.rows as any[])?.[0]?.TOTAL || 0;
 
-    const dataSql = `SELECT PROD_ID, NAME, DESCRIPTION, RATING, CATEGORY, PRICE, IMAGE FROM products${filterClause}${orderByClause} OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
+    const dataSql = `SELECT PROD_ID, NAME, DESCRIPTION, CATEGORY, PRICE, IMAGE FROM products${filterClause}${orderByClause} OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
     const paginatedBinds = { ...binds, offset, limit };
 
     const dataResult = await connection.execute(dataSql, paginatedBinds, {
