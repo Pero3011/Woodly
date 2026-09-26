@@ -7,7 +7,7 @@ export default function Loading() {
     <main className="fixed inset-0 z-9999 flex min-h-screen items-center justify-center overflow-hidden">
       {/* Ambient background glow */}
       <motion.div
-        className="pointer-events-none absolute h-125 w-125 rounded-full bg-black blur-[100px]"
+        className="pointer-events-none absolute h-125 w-125 rounded-full bg-amber-950/40 blur-[80px]"
         animate={{
           scale: [1, 1.15, 1],
           opacity: [0.3, 0.5, 0.3],
@@ -73,7 +73,7 @@ export default function Loading() {
 
         {/* Loading message */}
         <motion.p
-          className="mt-6 text-[10px] font-medium tracking-[0.45em] text-amber-200/60"
+          className="mt-6 text-[10px] font-medium tracking-[0.45em] text-amber-950/40"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
