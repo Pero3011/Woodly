@@ -1,48 +1,66 @@
 import { getDatabaseConnection } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import oracledb from "oracledb";
 
 export async function GET(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // Route params arrive as a Promise in Next.js 16
   const { id } = await params;
+  const cleanId = id.trim().toUpperCase();
 
   let connection;
   try {
     connection = await getDatabaseConnection();
 
-    const query = `
-      SELECT PROD_ID, NAME, DESCRIPTION, RATING, CATEGORY, PRICE, IMAGE
+    // 1. Fetch main product details
+    const ProductQuery = `
+      SELECT PROD_ID, NAME, DESCRIPTION, CATEGORY, PRICE
       FROM products
-      WHERE RAWTOHEX(PROD_ID) = UPPER(:id)
+      WHERE PROD_ID = HEXTORAW(:id)
     `;
 
-    const result = await connection.execute(
-      query,
-      { id },
-      {
-        outFormat: oracledb.OUT_FORMAT_OBJECT,
-      },
+    const products = await connection.execute(
+      ProductQuery,
+      { id: cleanId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
 
-    const rows = (result.rows || []) as any[];
-    const row = rows[0];
+    const ProdRows = (products.rows || []) as any[];
+    const ProdRow = ProdRows[0];
 
-    if (!row) {
+    // Early exit if product does not exist
+    if (!ProdRow) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // 2. Fetch gallery images
+    const GalleryQuery = `
+      SELECT IMAGE_URL
+      FROM prodgallery
+      WHERE PROD_ID = HEXTORAW(:id)
+      ORDER BY SORT_ORDER ASC
+    `;
+
+    const gallery = await connection.execute(
+      GalleryQuery,
+      { id: cleanId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    );
+
+    const GallRows = (gallery.rows || []) as any[];
+    const images = GallRows.map((r) => r.IMAGE_URL);
+
+    // Format final product object
     const product = {
-      prod_id: Buffer.isBuffer(row.PROD_ID)
-        ? row.PROD_ID.toString("hex")
-        : row.PROD_ID?.toString() || "",
-      prod_name: row.NAME,
-      prod_description: row.DESCRIPTION,
-      prod_rating: row.RATING,
-      prod_category: row.CATEGORY,
-      prod_price: row.PRICE,
-      prod_img: row.IMAGE,
+      prod_id: Buffer.isBuffer(ProdRow.PROD_ID)
+        ? ProdRow.PROD_ID.toString("hex")
+        : ProdRow.PROD_ID?.toString() || "",
+      prod_name: ProdRow.NAME,
+      prod_description: ProdRow.DESCRIPTION,
+      prod_category: ProdRow.CATEGORY,
+      prod_price: ProdRow.PRICE,
+      prod_imgs: images,
     };
 
     return NextResponse.json({ product });

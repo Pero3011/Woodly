@@ -1,6 +1,4 @@
-import { getDatabaseConnection } from "@/lib/db";
 import { notFound } from "next/navigation";
-import oracledb from "oracledb";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/FooterPage";
 import Details from "@/components/PieceDetails/Details";
@@ -11,44 +9,32 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function PieceDetailsPage({ params }: PageProps) {
-  const { id } = await params;
+async function getProduct(id: string) {
+  // Use absolute URL for server-side fetching in Next.js App Router
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-  let connection;
-  let row;
+  const res = await fetch(`${baseUrl}/api/shop/${id}`, {
+    cache: "no-store", // Ensures fresh data on request
+  });
 
-  try {
-    connection = await getDatabaseConnection();
-
-    // Same RAWTOHEX comparison as the API route — PROD_ID is RAW (binary),
-    // and `id` here is the hex string version of it
-    const query = `
-      SELECT PROD_ID, NAME, DESCRIPTION, RATING, CATEGORY, PRICE, IMAGE
-      FROM products
-      WHERE RAWTOHEX(PROD_ID) = UPPER(:id)
-    `;
-
-    const result = await connection.execute(
-      query,
-      { id },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    row = (result.rows as any[])?.[0];
-  } finally {
-    // Always release the connection, even if the query above throws
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing connection:", closeErr);
-      }
-    }
+  if (res.status === 404) {
+    return null;
   }
 
-  // No product with this id — show Next.js's not-found page
-  // instead of crashing or rendering empty fields
-  if (!row) {
+  if (!res.ok) {
+    throw new Error(`Failed to fetch product details. Status: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.product;
+}
+
+export default async function PieceDetailsPage({ params }: PageProps) {
+  const { id } = await params;
+  const product = await getProduct(id);
+
+  // If the API route returns a 404 or no product, show Next.js 404 page
+  if (!product) {
     notFound();
   }
 
@@ -57,16 +43,16 @@ export default async function PieceDetailsPage({ params }: PageProps) {
       <Navbar />
       <div className="grid grid-cols-5 gap-10 max-w-6xl mx-auto px-5 pb-5">
         <div className="col-span-3 pt-8">
-          <Gallery />
+          <Gallery images={product.prod_imgs} />
         </div>
         <div className="col-span-2">
           <Details
-            Prod_id={row.PROD_ID.toString("hex")}
-            Prod_img={row.IMAGE}
-            Title={row.NAME}
-            Category={row.CATEGORY}
-            Price={row.PRICE}
-            Description={row.DESCRIPTION}
+            Prod_id={product.prod_id}
+            Prod_img={product.prod_imgs[0] || ""}
+            Title={product.prod_name}
+            Category={product.prod_category}
+            Price={product.prod_price}
+            Description={product.prod_description}
           />
         </div>
       </div>
