@@ -8,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import Receipt, { ReceiptOrderData } from "@/components/Checkout/Receipt";
 import ConfirmOrder from "@/components/Checkout/ConfirmOrder";
+import { toast } from "sonner";
 
 // Placeholder rates until real shipping/tax logic is wired up to the backend
 const SHIPPING_RATE = 0.18;

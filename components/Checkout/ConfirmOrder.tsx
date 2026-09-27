@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, X } from "lucide-react";
 import type { ReceiptOrderData } from "./Receipt";
+import { toast } from "sonner";
 
 // Reuses the exact same shape Receipt uses — this modal shows a preview
 // of the order, so it needs the same data Receipt will eventually show,
@@ -13,18 +15,62 @@ interface ConfirmOrderProps {
   onCancel: () => void;
   onConfirm: () => void;
   orderData: ReceiptOrderData | null;
-  isSubmitting?: boolean;
 }
-
 
 export default function ConfirmOrder({
   isOpen,
   onCancel,
   onConfirm,
   orderData,
-  isSubmitting = false,
 }: ConfirmOrderProps) {
+  // Tracks the real network request to /api/checkout. This used to be a
+  // prop the parent never actually passed in, so "Confirm order" never
+  // really waited on anything — now it's driven by the fetch below.
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   if (!orderData) return null;
+
+  // Runs when the shopper presses "Confirm order". Saves the order to
+  // the ORDERS table first, and only opens the Receipt (via onConfirm)
+  // once the rows are actually stored — so nobody sees a receipt for
+  // an order that failed to save.
+  const handleConfirmClick = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: orderData.items.map((item) => ({
+            id: item.id,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          shipping: orderData.shipping,
+          paymentMethod: orderData.paymentMethod,
+          shippingCost: orderData.shippingCost,
+          tax: orderData.tax,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not place the order");
+      }
+
+      onConfirm();
+      toast.success("Order Added Successfully!!")
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.");
+      toast.error(`${err.message}`)
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -129,6 +175,15 @@ export default function ConfirmOrder({
                 <p>{orderData.paymentMethod}</p>
               </div>
 
+              {/* Shows only if the last save attempt failed */}
+              {error && (
+                <div className="px-6 pt-3">
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                    {error}
+                  </p>
+                </div>
+              )}
+
               {/* Actions — this is what makes it a confirmation step and
                   not just a second receipt */}
               <div className="px-6 py-4 border-t border-neutral-300 flex gap-3">
@@ -140,7 +195,7 @@ export default function ConfirmOrder({
                   Go back
                 </button>
                 <button
-                  onClick={onConfirm}
+                  onClick={handleConfirmClick}
                   disabled={isSubmitting}
                   className="flex-1 rounded-md bg-[#5A2D0C] text-white py-2.5 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                 >

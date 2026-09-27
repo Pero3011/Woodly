@@ -90,7 +90,6 @@ export default function Receipt({ isOpen, onClose, orderData }: ReceiptProps) {
     onClose()
     clearCart()
     route.push("/pages/shop")
-    toast.success("Order Placed Successfully")
   }
     
   return (

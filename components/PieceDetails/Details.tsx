@@ -1,7 +1,8 @@
-'use client'
+"use client";
 
 import { useCart } from "@/context/CartContext";
 import { ShoppingCart } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 
 interface DetailsProps {
@@ -33,7 +34,7 @@ export default function Details({
   LeadTime,
   Origin,
 }: DetailsProps) {
-  const {addToCart}=useCart()
+  const { addToCart } = useCart();
   return (
     <div className="max-w-md mx-auto px-6 py-8">
       {/* Badge */}
@@ -134,19 +135,20 @@ export default function Details({
             e.preventDefault();
             e.stopPropagation();
             addToCart({
-                id: Prod_id,
-                name: Title,
-                price: Price,
-                image: Prod_img,
-              });
+              id: Prod_id,
+              name: Title,
+              price: Price,
+              image: Prod_img,
+            });
             toast.success(`${Title} Added Successfully`);
           }}
         >
           <ShoppingCart size={16} />
           Add to Cart
         </button>
+
         <button className="flex-1 bg-[#D98A3D] hover:bg-[#C97A2D] transition-colors text-white text-xs font-semibold uppercase tracking-wider py-3.5 rounded-lg">
-          Buy Now
+          <Link href={"/pages/checkout"}>Buy Now</Link>
         </button>
       </div>
 
