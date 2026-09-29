@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CircleDollarSign,
   Store,
@@ -13,12 +12,15 @@ import {
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 
+type ProfileStats = {
+  Investements: number;
+  PiecesOwned: number;
+  CustomCommissions: number;
+};
 
 export default function ProfileSettings() {
-  const route = useRouter();
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const {user} = useAuth()
-
+  const { user } = useAuth();
 
   // Editable form state — separate from `user` so the modal has its own
   // draft that only overwrites `user` once the save succeeds.
@@ -29,6 +31,11 @@ export default function ProfileSettings() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Account stats state: the numbers, the waiting flag, and the error message.
+  const [statsData, setStatsData] = useState<ProfileStats | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
   // Seed the draft fields whenever we (re)load the user or open the modal.
   useEffect(() => {
     if (user) {
@@ -38,21 +45,62 @@ export default function ProfileSettings() {
     }
   }, [user, isEditOpen]);
 
+  // Ask the server for the stats once, right after the page first shows.
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadStats() {
+      try {
+        const response = await fetch("/api/profile/stats");
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          if (!ignore) {
+            setStatsError(data?.error || "Could not load your stats.");
+          }
+          return;
+        }
+
+        if (!ignore) setStatsData(data);
+      } catch (err) {
+        if (!ignore) {
+          setStatsError("Network error. Please check your connection.");
+        }
+      } finally {
+        if (!ignore) setIsStatsLoading(false);
+      }
+    }
+
+    loadStats();
+
+    // Cleanup: if the user leaves the page early, ignore the late answer.
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const placeholder = isStatsLoading ? "..." : "—";
+
   const stats = [
     {
       name: "Total Investements",
       icon: CircleDollarSign,
-      value: "4,250$",
+      value: statsData
+        ? `${statsData.Investements.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}$`
+        : placeholder,
     },
     {
       name: "Pieces Owned",
       icon: Store,
-      value: "12",
+      value: statsData ? String(statsData.PiecesOwned) : placeholder,
     },
     {
       name: "Custom Commisions",
       icon: Hammer,
-      value: "3",
+      value: statsData ? String(statsData.CustomCommissions) : placeholder,
     },
   ];
 
@@ -251,6 +299,9 @@ export default function ProfileSettings() {
         <h2 className="font-serif text-2xl text-[#2A1E17] mb-4">
           Account Stats
         </h2>
+        {statsError && (
+          <p className="mb-3 text-sm text-red-700">{statsError}</p>
+        )}
         <div className="grid grid-cols-3 gap-4">
           {stats.map((stat, index) => (
             <div key={index} className="bg-[#EFE6D8] rounded-xl p-10">
