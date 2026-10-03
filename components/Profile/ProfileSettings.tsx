@@ -136,7 +136,7 @@ export default function ProfileSettings() {
 
     async function loadRecentOrders() {
       try {
-        const response = await fetch("/api/profile/recent-orders");
+        const response = await fetch("/api/profile/orders");
         const data = await response.json().catch(() => null);
 
         if (!response.ok) {
