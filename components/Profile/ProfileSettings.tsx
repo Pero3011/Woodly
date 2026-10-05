@@ -371,6 +371,7 @@ export default function ProfileSettings() {
             src={"/logo.png"}
             alt={"AvatarImage"}
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover"
           />
         </div>
@@ -478,6 +479,7 @@ export default function ProfileSettings() {
                               src={item.image || "/logo.png"}
                               alt={item.title}
                               fill
+                              sizes="(max-width: 768px) 100vw, 50vw"
                               className="object-cover"
                             />
                           </div>

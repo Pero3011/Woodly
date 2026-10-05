@@ -8,7 +8,6 @@ interface StepProgressProps {
 
 const STEPS: { id: CustomizeStep; label: string; icon: typeof Upload }[] = [
   { id: "upload", label: "Upload", icon: Upload },
-  { id: "details", label: "Details", icon: PenLine },
   { id: "review", label: "Review", icon: Eye },
   { id: "submit", label: "Submit", icon: CheckCircle2 },
 ];

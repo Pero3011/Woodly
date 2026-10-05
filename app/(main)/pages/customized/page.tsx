@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/FooterPage";
 import StepProgress, { CustomizeStep } from "@/components/Customized/StepProgress";
 import UploadSketch from "@/components/Customized/UploadSketch";
 import PieceSpecifications, { PieceSpec } from "@/components/Customized/PieceSpecifications";
 import RequestsPanel from "@/components/Customized/RequestsPanel";
-import InspiredByOthers from "@/components/Customized/InspiredByOthers";
 
 const DEFAULT_SPEC: PieceSpec = {
   timberVariety: "Black Walnut (Dark & Rich)",
@@ -22,18 +21,19 @@ export default function CustomizePage() {
   const [sketchFile, setSketchFile] = useState<File | null>(null);
   const [spec, setSpec] = useState<PieceSpec>(DEFAULT_SPEC);
 
+
   function handleClearDraft() {
     setSketchFile(null);
     setSpec(DEFAULT_SPEC);
   }
 
   function handleNextStep() {
-    setStep("details");
+    setStep("review");
   }
 
   return (
     <div className="min-h-full flex flex-col bg-secondary">
-      <Navbar/>
+      <Navbar />
 
       <main className="flex-1">
         {/* Hero */}
@@ -78,8 +78,6 @@ export default function CustomizePage() {
           <span className="w-6 h-1.5 rounded-full bg-primary" />
           <span className="w-1.5 h-1.5 rounded-full bg-primary/20" />
         </div>
-
-        <InspiredByOthers />
       </main>
 
       <Footer />
