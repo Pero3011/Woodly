@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 
 export interface PieceSpec {
+  title: string;
   timberVariety: string;
   width: string;
   height: string;
@@ -12,6 +13,8 @@ export interface PieceSpec {
 
 interface PieceSpecificationsProps {
   spec: PieceSpec;
+  error: string | null;
+  isSubmitting: boolean;
   onChange: (spec: PieceSpec) => void;
   onClearDraft: () => void;
   onNextStep: () => void;
@@ -26,6 +29,8 @@ const TIMBER_OPTIONS = [
 
 export default function PieceSpecifications({
   spec,
+  error,
+  isSubmitting,
   onChange,
   onClearDraft,
   onNextStep,
@@ -35,6 +40,20 @@ export default function PieceSpecifications({
       <h3 className="font-serif text-lg text-primary mb-5">
         Piece Specifications
       </h3>
+
+      <div className="mb-5">
+        <label className="block text-sm font-medium text-primary mb-1.5">
+          Request Title
+        </label>
+        <input
+          type="text"
+          maxLength={100}
+          placeholder="e.g. Carved walnut serving tray"
+          value={spec.title}
+          onChange={(e) => onChange({ ...spec, title: e.target.value })}
+          className="w-full rounded-lg border border-primary/15 bg-secondary text-primary text-sm placeholder-neutral px-3 py-2.5 focus:outline-none focus:border-primary/50"
+        />
+      </div>
 
       <div className="grid sm:grid-cols-2 gap-5 mb-5">
         <div>
@@ -63,6 +82,7 @@ export default function PieceSpecifications({
           <div className="flex gap-2">
             <input
               type="text"
+              inputMode="decimal"
               placeholder="Width"
               value={spec.width}
               onChange={(e) => onChange({ ...spec, width: e.target.value })}
@@ -70,6 +90,7 @@ export default function PieceSpecifications({
             />
             <input
               type="text"
+              inputMode="decimal"
               placeholder="Height"
               value={spec.height}
               onChange={(e) => onChange({ ...spec, height: e.target.value })}
@@ -95,6 +116,7 @@ export default function PieceSpecifications({
         </label>
         <textarea
           value={spec.instructions}
+          maxLength={1000}
           onChange={(e) => onChange({ ...spec, instructions: e.target.value })}
           placeholder="Describe any specific patterns, edge profiles, or personal inscriptions..."
           rows={4}
@@ -102,11 +124,18 @@ export default function PieceSpecifications({
         />
       </div>
 
+      {error && (
+        <p role="alert" className="mb-4 text-sm text-red-600">
+          {error}
+        </p>
+      )}
+
       <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={onClearDraft}
-          className="flex items-center gap-1.5 text-sm font-medium text-primary/70 hover:text-primary transition-colors"
+          disabled={isSubmitting}
+          className="flex items-center gap-1.5 text-sm font-medium text-primary/70 hover:text-primary transition-colors disabled:opacity-50"
         >
           <X className="w-4 h-4" />
           Clear Draft
@@ -115,9 +144,10 @@ export default function PieceSpecifications({
         <button
           type="button"
           onClick={onNextStep}
-          className="px-6 py-2.5 rounded-lg bg-primary text-secondary text-sm font-semibold hover:opacity-90 transition-opacity"
+          disabled={isSubmitting}
+          className="px-6 py-2.5 rounded-lg bg-primary text-secondary text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          Next Step
+          {isSubmitting ? "Sending..." : "Next Step"}
         </button>
       </div>
     </div>

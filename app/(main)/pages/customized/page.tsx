@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/FooterPage";
-import StepProgress, { CustomizeStep } from "@/components/Customized/StepProgress";
+import StepProgress, {
+  CustomizeStep,
+} from "@/components/Customized/StepProgress";
 import UploadSketch from "@/components/Customized/UploadSketch";
-import PieceSpecifications, { PieceSpec } from "@/components/Customized/PieceSpecifications";
+import PieceSpecifications, {
+  PieceSpec,
+} from "@/components/Customized/PieceSpecifications";
 import RequestsPanel from "@/components/Customized/RequestsPanel";
 
 const DEFAULT_SPEC: PieceSpec = {
+  title: "",
   timberVariety: "Black Walnut (Dark & Rich)",
   width: "",
   height: "",
@@ -16,19 +21,104 @@ const DEFAULT_SPEC: PieceSpec = {
   instructions: "",
 };
 
+async function readError(res: Response): Promise<string> {
+  const data = await res.json().catch(() => null);
+  return data?.error ?? "Something went wrong. Please try again.";
+}
+
 export default function CustomizePage() {
   const [step, setStep] = useState<CustomizeStep>("upload");
   const [sketchFile, setSketchFile] = useState<File | null>(null);
+  const [uploadedPath, setUploadedPath] = useState<string | null>(null);
   const [spec, setSpec] = useState<PieceSpec>(DEFAULT_SPEC);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [panelKey, setPanelKey] = useState(0);
+  const [resetKey, setResetKey] = useState(0);
 
-
-  function handleClearDraft() {
-    setSketchFile(null);
-    setSpec(DEFAULT_SPEC);
+  function handleFileSelect(file: File | null) {
+    setSketchFile(file);
+    setUploadedPath(null);
   }
 
-  function handleNextStep() {
-    setStep("review");
+  function resetDraft() {
+    setSketchFile(null);
+    setUploadedPath(null);
+    setSpec(DEFAULT_SPEC);
+    setResetKey((k) => k + 1);
+  }
+
+  function handleClearDraft() {
+    resetDraft();
+    setError(null);
+  }
+
+  async function handleNextStep() {
+    if (isSubmitting) return;
+    setError(null);
+
+    if (!sketchFile) {
+      setError("Please upload your concept sketch.");
+      return;
+    }
+    if (!spec.title.trim()) {
+      setError("Please write a title for your request.");
+      return;
+    }
+    if (!(Number(spec.width) > 0) || !(Number(spec.height) > 0)) {
+      setError("Width and height must be positive numbers.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Move 1: upload the file (skip if it was already uploaded)
+      let img = uploadedPath;
+
+      if (!img) {
+        const formData = new FormData();
+        formData.append("sketch", sketchFile);
+
+        // No Content-Type header here. The browser adds it with the boundary.
+        const uploadRes = await fetch("/api/customized/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) throw new Error(await readError(uploadRes));
+
+        img = (await uploadRes.json()).path as string;
+        setUploadedPath(img);
+      }
+
+      // Move 2: save the request and the path in the database
+      const createRes = await fetch("/api/customized", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: spec.title,
+          img,
+          timberVariety: spec.timberVariety,
+          width: spec.width,
+          height: spec.height,
+          unit: spec.unit,
+          instructions: spec.instructions,
+        }),
+      });
+
+      if (!createRes.ok) throw new Error(await readError(createRes));
+
+      setStep("review");
+      setPanelKey((k) => k + 1); // makes RequestsPanel load again
+      resetDraft();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong. Try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -60,16 +150,22 @@ export default function CustomizePage() {
         {/* Main workspace */}
         <section className="max-w-5xl mx-auto px-6 grid lg:grid-cols-[1fr_320px] gap-6 items-start">
           <div className="flex flex-col gap-6">
-            <UploadSketch file={sketchFile} onFileSelect={setSketchFile} />
+            <UploadSketch
+              key={resetKey}
+              file={sketchFile}
+              onFileSelect={handleFileSelect}
+            />
             <PieceSpecifications
               spec={spec}
+              error={error}
+              isSubmitting={isSubmitting}
               onChange={setSpec}
               onClearDraft={handleClearDraft}
               onNextStep={handleNextStep}
             />
           </div>
 
-          <RequestsPanel />
+          <RequestsPanel key={panelKey} />
         </section>
 
         {/* Carousel dots (visual pagination between studio and inspiration) */}
