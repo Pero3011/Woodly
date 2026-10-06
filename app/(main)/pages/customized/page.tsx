@@ -10,6 +10,7 @@ import UploadSketch from "@/components/Customized/UploadSketch";
 import PieceSpecifications, {
   PieceSpec,
 } from "@/components/Customized/PieceSpecifications";
+import ReviewStep from "@/components/Customized/ReviewStep";
 import RequestsPanel from "@/components/Customized/RequestsPanel";
 
 const DEFAULT_SPEC: PieceSpec = {
@@ -53,8 +54,9 @@ export default function CustomizePage() {
     setError(null);
   }
 
-  async function handleNextStep() {
-    if (isSubmitting) return;
+  // STEP 1 -> 2: only check the form, then show the Review step.
+  // Nothing is sent to the server yet.
+  function handleGoToReview() {
     setError(null);
 
     if (!sketchFile) {
@@ -70,6 +72,18 @@ export default function CustomizePage() {
       return;
     }
 
+    setStep("review");
+  }
+
+  function handleBackToEdit() {
+    setError(null);
+    setStep("upload");
+  }
+
+  // STEP 2 -> 3: the old "Next Step" logic now lives here.
+  async function handleSubmit() {
+    if (isSubmitting || !sketchFile) return;
+    setError(null);
     setIsSubmitting(true);
 
     try {
@@ -109,7 +123,7 @@ export default function CustomizePage() {
 
       if (!createRes.ok) throw new Error(await readError(createRes));
 
-      setStep("review");
+      setStep("submit");
       setPanelKey((k) => k + 1); // makes RequestsPanel load again
       resetDraft();
     } catch (err) {
@@ -150,19 +164,53 @@ export default function CustomizePage() {
         {/* Main workspace */}
         <section className="max-w-5xl mx-auto px-6 grid lg:grid-cols-[1fr_320px] gap-6 items-start">
           <div className="flex flex-col gap-6">
-            <UploadSketch
-              key={resetKey}
-              file={sketchFile}
-              onFileSelect={handleFileSelect}
-            />
-            <PieceSpecifications
-              spec={spec}
-              error={error}
-              isSubmitting={isSubmitting}
-              onChange={setSpec}
-              onClearDraft={handleClearDraft}
-              onNextStep={handleNextStep}
-            />
+            {step === "upload" && (
+              <>
+                <UploadSketch
+                  key={resetKey}
+                  file={sketchFile}
+                  onFileSelect={handleFileSelect}
+                />
+                <PieceSpecifications
+                  spec={spec}
+                  error={error}
+                  isSubmitting={isSubmitting}
+                  onChange={setSpec}
+                  onClearDraft={handleClearDraft}
+                  onNextStep={handleGoToReview}
+                />
+              </>
+            )}
+
+            {step === "review" && (
+              <ReviewStep
+                spec={spec}
+                file={sketchFile}
+                error={error}
+                isSubmitting={isSubmitting}
+                onBack={handleBackToEdit}
+                onSubmit={handleSubmit}
+              />
+            )}
+
+            {step === "submit" && (
+              <div className="bg-canvas rounded-2xl p-8 text-center">
+                <h3 className="font-serif text-2xl text-primary mb-2">
+                  Request sent
+                </h3>
+                <p className="text-sm text-neutral mb-6">
+                  Our artisans will review your sketch and send you a quote. You
+                  can follow it in My Requests.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setStep("upload")}
+                  className="px-6 py-2.5 rounded-lg bg-primary text-secondary text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Start a new request
+                </button>
+              </div>
+            )}
           </div>
 
           <RequestsPanel key={panelKey} />
