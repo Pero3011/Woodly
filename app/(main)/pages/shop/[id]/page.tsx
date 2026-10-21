@@ -11,11 +11,14 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+
 async function getProduct(id: string) {
   const headersList = await headers();
 
   const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
-  const protocol = headersList.get("x-forwarded-proto") ?? "https";
+
+  const protocol =
+    headersList.get("x-forwarded-proto")?.split(",")[0] ?? "https";
 
   if (!host) {
     throw new Error("Unable to determine request host");
@@ -23,9 +26,12 @@ async function getProduct(id: string) {
 
   const baseUrl = `${protocol}://${host}`;
 
-  const res = await fetch(`${baseUrl}/api/shop/${encodeURIComponent(id)}`, {
-    cache: "no-store",
-  });
+  const res = await fetch(
+    new URL(`/api/shop/${encodeURIComponent(id)}`, baseUrl),
+    {
+      cache: "no-store",
+    },
+  );
 
   if (res.status === 404) {
     return null;
@@ -38,6 +44,7 @@ async function getProduct(id: string) {
   const data = await res.json();
   return data.product ?? null;
 }
+
 
 export default async function PieceDetailsPage({ params }: PageProps) {
   const { id } = await params;
