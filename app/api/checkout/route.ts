@@ -2,14 +2,11 @@ import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
-// Shape the checkout page sends. `id` on each item is the product's
-// PROD_ID as a hex string — the same format the shop routes already
-// use (see app/api/shop/[id]/route.ts), so it can go straight into
-// HEXTORAW() below without any extra conversion.
 interface CheckoutItem {
   id: string;
   price: number;
   quantity: number;
+  name?: string;
 }
 
 interface CheckoutBody {
@@ -45,84 +42,89 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // One shared ORDER_ID ties every product line of this order together.
-    // 8 hex characters comfortably fits the ORDER_ID VARCHAR2(10 BYTE) column.
-    const orderId = crypto.randomUUID().split("-")[0].toUpperCase();
+    // Generate short unique order code (e.g. "A1B2C3D4")
+    const orderCode = crypto.randomUUID().split("-")[0].toUpperCase();
 
-    // One bind row per cart item — every row shares the same orderId,
-    // user, shipping info and payment method; only the product,
-    // quantity and line total change per row.
-    const binds = body.items.map((item) => ({
-      order_id: orderId,
-      user_id: session.user_id,
-      prod_id: item.id,
-      quantity: item.quantity,
-      total_price: item.price * item.quantity,
-      ship_first_name: body.shipping.firstName,
-      ship_last_name: body.shipping.lastName,
-      ship_address: body.shipping.address,
-      ship_city: body.shipping.city,
-      ship_postcode: body.shipping.postcode,
-      payment_method: body.paymentMethod,
-      shipping_cost: body.shippingCost,
-      tax_amount: body.tax,
-    }));
+    // Calculate totals to satisfy database constraints
+    const subtotal = body.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+    const totalAmount = subtotal + body.shippingCost + body.tax;
 
-    const query = `
-      INSERT INTO ORDERS (
-        ORDER_ID,
+    connection = await getDatabaseConnection();
+
+    // Start transaction block
+    await connection.query("BEGIN");
+
+    // 1. Insert Order Header into ORDERS table
+    const orderHeaderResult = await connection.query(
+      `INSERT INTO ORDERS (
+        ORDER_CODE,
         USER_ID,
-        PROD_ID,
-        QUANTITY,
-        TOTAL_PRICE,
         SHIP_FIRST_NAME,
         SHIP_LAST_NAME,
         SHIP_ADDRESS,
         SHIP_CITY,
         SHIP_POSTCODE,
         PAYMENT_METHOD,
+        SUBTOTAL,
         SHIPPING_COST,
-        TAX_AMOUNT
-      ) VALUES (
-        :order_id,
-        HEXTORAW(:user_id),
-        HEXTORAW(:prod_id),
-        :quantity,
-        :total_price,
-        :ship_first_name,
-        :ship_last_name,
-        :ship_address,
-        :ship_city,
-        :ship_postcode,
-        :payment_method,
-        :shipping_cost,
-        :tax_amount
-      )
-    `;
-    // ORDER_STATUS and ORDERED_AT are left out on purpose — the migration
-    // gives them safe defaults ('pending' and SYSDATE), so every new
-    // order starts in a consistent state without repeating that here.
+        TAX_AMOUNT,
+        TOTAL_AMOUNT
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING ORDER_ID`,
+      [
+        orderCode,
+        session.user_id,
+        body.shipping.firstName,
+        body.shipping.lastName,
+        body.shipping.address,
+        body.shipping.city,
+        body.shipping.postcode,
+        body.paymentMethod,
+        subtotal,
+        body.shippingCost,
+        body.tax,
+        totalAmount,
+      ],
+    );
 
-    connection = await getDatabaseConnection();
+    const orderId = orderHeaderResult.rows[0].order_id;
 
-    // executeMany inserts all product lines for this order in one
-    // round trip, and either every line is saved or none are.
-    await connection.executeMany(query, binds, { autoCommit: true });
+    // 2. Insert line items into ORDER_ITEMS table
+    for (const item of body.items) {
+      const itemName = item.name || "Handcrafted Wood Piece";
+      const lineUnitPrice = item.price * item.quantity;
+
+      await connection.query(
+        `INSERT INTO ORDER_ITEMS (
+          ORDER_ID,
+          PROD_ID,
+          ITEM_NAME,
+          UNIT_PRICE
+        ) VALUES ($1, $2, $3, $4)`,
+        [orderId, item.id, itemName, lineUnitPrice],
+      );
+    }
+
+    // Commit transaction
+    await connection.query("COMMIT");
 
     return NextResponse.json({
       order_id: orderId,
+      order_code: orderCode,
       item_count: body.items.length,
     });
   } catch (err: any) {
+    if (connection) {
+      await connection.query("ROLLBACK");
+    }
     console.error("Checkout Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   } finally {
     if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing connection:", closeErr);
-      }
+      connection.release();
     }
   }
 }

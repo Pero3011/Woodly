@@ -1,65 +1,53 @@
 import { getDatabaseConnection } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import oracledb from "oracledb";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const cleanId = id.trim().toUpperCase();
+  const productId = id.trim();
 
   let connection;
   try {
     connection = await getDatabaseConnection();
 
-    // 1. Fetch main product details
-    const ProductQuery = `
-      SELECT PROD_ID, NAME, DESCRIPTION, CATEGORY, PRICE
+    // 1. Prepare queries for product details and gallery images
+    const productQuery = `
+      SELECT prod_id, name, description, category, price
       FROM products
-      WHERE PROD_ID = HEXTORAW(:id)
+      WHERE prod_id = $1
     `;
 
-    const products = await connection.execute(
-      ProductQuery,
-      { id: cleanId },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
+    const galleryQuery = `
+      SELECT image_url
+      FROM prodgallery
+      WHERE prod_id = $1
+      ORDER BY sort_order ASC
+    `;
 
-    const ProdRows = (products.rows || []) as any[];
-    const ProdRow = ProdRows[0];
+    // 2. Fetch both product and gallery records concurrently
+    const [productResult, galleryResult] = await Promise.all([
+      connection.query(productQuery, [productId]),
+      connection.query(galleryQuery, [productId]),
+    ]);
+
+    const prodRow = productResult.rows[0];
 
     // Early exit if product does not exist
-    if (!ProdRow) {
+    if (!prodRow) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // 2. Fetch gallery images
-    const GalleryQuery = `
-      SELECT IMAGE_URL
-      FROM prodgallery
-      WHERE PROD_ID = HEXTORAW(:id)
-      ORDER BY SORT_ORDER ASC
-    `;
-
-    const gallery = await connection.execute(
-      GalleryQuery,
-      { id: cleanId },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    const GallRows = (gallery.rows || []) as any[];
-    const images = GallRows.map((r) => r.IMAGE_URL);
+    const images = galleryResult.rows.map((r) => r.image_url);
 
     // Format final product object
     const product = {
-      prod_id: Buffer.isBuffer(ProdRow.PROD_ID)
-        ? ProdRow.PROD_ID.toString("hex")
-        : ProdRow.PROD_ID?.toString() || "",
-      prod_name: ProdRow.NAME,
-      prod_description: ProdRow.DESCRIPTION,
-      prod_category: ProdRow.CATEGORY,
-      prod_price: ProdRow.PRICE,
+      prod_id: prodRow.prod_id,
+      prod_name: prodRow.name,
+      prod_description: prodRow.description,
+      prod_category: prodRow.category,
+      prod_price: Number(prodRow.price),
       prod_imgs: images,
     };
 
@@ -69,11 +57,7 @@ export async function GET(
     return NextResponse.json({ error: err.message }, { status: 500 });
   } finally {
     if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing connection:", closeErr);
-      }
+      connection.release();
     }
   }
 }

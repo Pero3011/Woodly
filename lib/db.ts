@@ -1,17 +1,16 @@
-import oracledb from "oracledb";
+import { Pool, PoolClient } from "pg";
 
-const dbConfig = {
-  user: process.env.ORACLE_USER,
-  password: process.env.ORACLE_PASSWORD,
-  connectString: process.env.ORACLE_CONNECT_STRING,
-};
+let pool: Pool;
 
-
-let pool: oracledb.Pool;
-
-export async function getDatabaseConnection() {
+export async function getDatabaseConnection(): Promise<PoolClient> {
   if (!pool) {
-    pool = await oracledb.createPool(dbConfig);
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      max: 10,
+    });
   }
-  return await pool.getConnection();
+  return await pool.connect();
 }

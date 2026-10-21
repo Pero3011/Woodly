@@ -2,7 +2,6 @@ import { createToken } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
-import oracledb from "oracledb";
 
 export async function POST(request: Request) {
   let connection;
@@ -19,13 +18,12 @@ export async function POST(request: Request) {
 
     connection = await getDatabaseConnection();
 
-    const result = await connection.execute(
-      `select USER_ID,NAME,EMAIL,PASSWORD,PHONE,ROLE from users where email = :email`,
-      { email: body.email },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    const result = await connection.query(
+      `SELECT user_id, name, email, password, phone, role FROM users WHERE email = $1`,
+      [body.email.toLowerCase()],
     );
 
-    const users = result.rows as any[];
+    const users = result.rows;
 
     if (!users || users.length === 0) {
       return NextResponse.json({ error: "User Not Found" }, { status: 404 });
@@ -35,7 +33,7 @@ export async function POST(request: Request) {
 
     const isPasswordValid = await bcrypt.compare(
       body.password,
-      userFound.PASSWORD,
+      userFound.password,
     );
 
     if (!isPasswordValid) {
@@ -45,33 +43,32 @@ export async function POST(request: Request) {
       );
     }
 
-    //Generate Token
+    // Generate Token
     const token = await createToken({
-      user_id: userFound.USER_ID.toString("hex"),
-      user_name: userFound.NAME,
-      user_email: userFound.EMAIL,
-      user_phone: userFound.PHONE,
-      role: userFound.ROLE,
+      user_id: userFound.user_id,
+      user_name: userFound.name,
+      user_email: userFound.email,
+      user_phone: userFound.phone,
+      role: userFound.role,
     });
 
-    //Stores token in a cookie
+    // Stores token in a cookie
     const response = NextResponse.json({
       message: "Login successful",
       user: {
-        id: userFound.USER_ID,
-        email: userFound.EMAIL,
-        name: userFound.NAME,
-        phone: userFound.PHONE,
-        role: userFound.ROLE,
+        id: userFound.user_id,
+        email: userFound.email,
+        name: userFound.name,
+        phone: userFound.phone,
+        role: userFound.role,
       },
     });
-
 
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 15*60,
+      maxAge: 15 * 60,
       path: "/",
     });
 
@@ -83,6 +80,6 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   } finally {
-    await connection?.close();
+    connection?.release();
   }
 }

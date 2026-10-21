@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSession, updateSessionUser } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
-import oracledb from "oracledb";
 import { cookies } from "next/headers";
 
-//GET the current logged in User
+// GET the current logged in User
 export async function GET() {
   const session = await getSession();
   if (!session) {
@@ -21,22 +20,22 @@ export async function GET() {
   });
 }
 
-//UPDATE Logged In user Data
+// UPDATE Logged In user Data
 export async function PUT(request: Request) {
   let connection;
 
   try {
     const session = await getSession();
 
-    if (!session) {
+    if (!session?.user_id) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const body = await request.json();
     const name = typeof body?.name === "string" ? body.name.trim() : "";
     const phone = typeof body?.phone === "string" ? body.phone.trim() : "";
-    const user_email = typeof body?.email === "string" ? body.email.trim() : "";
-    const userIdBuffer = Buffer.from(session.user_id, "hex");
+    const user_email =
+      typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
 
     if (!name || !user_email) {
       return NextResponse.json(
@@ -47,48 +46,43 @@ export async function PUT(request: Request) {
 
     connection = await getDatabaseConnection();
 
-    const existing = await connection.execute(
-      `SELECT user_id FROM USERS WHERE email = :email AND user_id != :id`,
-      { email: user_email, id: userIdBuffer },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
+    // Check if the new email belongs to another user
+    const existing = await connection.query(
+      `SELECT user_id FROM users WHERE email = $1 AND user_id != $2`,
+      [user_email, session.user_id],
     );
 
-    if ((existing.rows as any[]).length > 0) {
+    if (existing.rows.length > 0) {
       return NextResponse.json(
         { error: "That email is already in use" },
         { status: 409 },
       );
     }
 
-    await connection.execute(
-      `update users
-   set name = :name, phone = :phone, email = :email
-   where user_id = :id`,
-      { name, phone, email: user_email, id: userIdBuffer },
-      { autoCommit: true },
+    // Update and return the modified row in a single query
+    const updateResult = await connection.query(
+      `UPDATE users
+       SET name = $1, phone = $2, email = $3
+       WHERE user_id = $4
+       RETURNING user_id, name, email, phone, role`,
+      [name, phone || null, user_email, session.user_id],
     );
 
-    const updated = await connection.execute(
-      `select user_id, name, email, phone, role from users where user_id = :id`,
-      { id: userIdBuffer },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    const row = (updated.rows as any[])[0];
+    const row = updateResult.rows[0];
 
     await updateSessionUser({
-      user_name: row.NAME,
-      user_email: row.EMAIL,
-      user_phone: row.PHONE,
+      user_name: row.name,
+      user_email: row.email,
+      user_phone: row.phone,
     });
 
     return NextResponse.json({
       user: {
-        id: row.USER_ID,
-        name: row.NAME,
-        email: row.EMAIL,
-        phone: row.PHONE,
-        role: row.ROLE,
+        id: row.user_id,
+        name: row.name,
+        email: row.email,
+        phone: row.phone,
+        role: row.role,
       },
     });
   } catch (err: any) {
@@ -98,28 +92,27 @@ export async function PUT(request: Request) {
       { status: 500 },
     );
   } finally {
-    await connection?.close();
+    if (connection) {
+      connection.release();
+    }
   }
 }
 
-//DELETE user
+// DELETE user
 export async function DELETE() {
   let connection;
 
   const session = await getSession();
-  if (!session) {
+  if (!session?.user_id) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   try {
     connection = await getDatabaseConnection();
-    const userIdBuffer = Buffer.from(session.user_id, "hex");
 
-    await connection.execute(
-      `DELETE FROM USERS WHERE user_id = :ID`,
-      { ID: userIdBuffer },
-      { autoCommit: true },
-    );
+    await connection.query(`DELETE FROM users WHERE user_id = $1`, [
+      session.user_id,
+    ]);
 
     const storedCookie = await cookies();
     storedCookie.delete("token");
@@ -132,6 +125,8 @@ export async function DELETE() {
       { status: 500 },
     );
   } finally {
-    await connection?.close();
+    if (connection) {
+      connection.release();
+    }
   }
 }

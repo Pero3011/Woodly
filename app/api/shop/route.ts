@@ -1,6 +1,5 @@
 import { getDatabaseConnection } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import oracledb from "oracledb";
 
 export async function GET(request: NextRequest) {
   let connection;
@@ -24,68 +23,64 @@ export async function GET(request: NextRequest) {
       ? categoryParam.split(",").filter(Boolean)
       : [];
 
-    // 3. Build Dynamic WHERE Clause and Binds
+    // 3. Build Dynamic WHERE Clause and Parameter Array
     let filterClause = ` WHERE 1=1`;
-    const binds: Record<string, any> = {};
+    const values: any[] = [];
+    let paramIndex = 1;
 
     // Multi-Category Filter (IN clause)
     if (categories.length > 0) {
-      const catBinds = categories.map((_, i) => `:cat${i}`);
-      filterClause += ` AND CATEGORY IN (${catBinds.join(",")})`;
-      categories.forEach((cat, i) => {
-        binds[`cat${i}`] = cat;
-      });
+      const catPlaceholders = categories.map(() => `$${paramIndex++}`);
+      filterClause += ` AND category IN (${catPlaceholders.join(",")})`;
+      values.push(...categories);
     }
 
-    // Wood Type Filter (Filtering by the direct WOOD_TYPE column)
+    // Wood Type Filter
     if (woodType) {
-      filterClause += ` AND WOOD_TYPE = :woodType`;
-      binds.woodType = woodType.toLowerCase();
+      filterClause += ` AND wood_type = $${paramIndex++}`;
+      values.push(woodType.toLowerCase());
     }
 
     // Max Price Filter
     if (price !== null && !isNaN(price)) {
-      filterClause += ` AND PRICE <= :price`;
-      binds.price = price;
+      filterClause += ` AND price <= $${paramIndex++}`;
+      values.push(price);
     }
 
     // 4. Dynamic ORDER BY Clause
-    let orderByClause = ` ORDER BY PROD_ID DESC`; // Default ("newest")
+    let orderByClause = ` ORDER BY created_at DESC, prod_id DESC`; // Default ("newest")
     if (sortBy === "price-asc") {
-      orderByClause = ` ORDER BY PRICE ASC, PROD_ID DESC`;
+      orderByClause = ` ORDER BY price ASC, prod_id DESC`;
     } else if (sortBy === "price-desc") {
-      orderByClause = ` ORDER BY PRICE DESC, PROD_ID DESC`;
+      orderByClause = ` ORDER BY price DESC, prod_id DESC`;
     }
 
     connection = await getDatabaseConnection();
 
-    // 5. Query: Fetch Paginated & Sorted Rows
-    const countSql = `SELECT COUNT(*) AS TOTAL FROM products${filterClause}`;
-    const countResult = await connection.execute(countSql, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
-    const totalItems = (countResult.rows as any[])?.[0]?.TOTAL || 0;
+    // 5. Query Count & Paginated Data Concurrently
+    const countSql = `SELECT COUNT(*) AS total FROM products${filterClause}`;
+    const dataSql = `SELECT prod_id, name, description, category, price, image 
+                     FROM products${filterClause}${orderByClause} 
+                     LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
 
-    const dataSql = `SELECT PROD_ID, NAME, DESCRIPTION, CATEGORY, PRICE, IMAGE FROM products${filterClause}${orderByClause} OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
-    const paginatedBinds = { ...binds, offset, limit };
+    const dataValues = [...values, limit, offset];
 
-    const dataResult = await connection.execute(dataSql, paginatedBinds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
+    const [countResult, dataResult] = await Promise.all([
+      connection.query(countSql, values),
+      connection.query(dataSql, dataValues),
+    ]);
 
-    const rows = (dataResult.rows || []) as any[];
+    const totalItems = parseInt(countResult.rows[0]?.total || "0", 10);
+    const rows = dataResult.rows || [];
 
-    // 6. Format Database Output for Frontend
+    // 6. Format Output for Frontend
     const products = rows.map((row) => ({
-      prod_id: Buffer.isBuffer(row.PROD_ID)
-        ? row.PROD_ID.toString("hex")
-        : row.PROD_ID?.toString() || "",
-      prod_name: row.NAME,
-      prod_description: row.DESCRIPTION,
-      prod_rating: row.RATING,
-      prod_category: row.CATEGORY,
-      prod_price: row.PRICE,
-      prod_img: row.IMAGE,
+      prod_id: row.prod_id,
+      prod_name: row.name,
+      prod_description: row.description,
+      prod_category: row.category,
+      prod_price: Number(row.price),
+      prod_img: row.image,
     }));
 
     return NextResponse.json({
@@ -101,11 +96,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   } finally {
     if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing connection:", closeErr);
-      }
+      connection.release();
     }
   }
 }

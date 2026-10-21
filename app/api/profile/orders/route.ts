@@ -1,19 +1,15 @@
 import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import { NextResponse } from "next/server";
-import oracledb from "oracledb";
 
 export async function GET(request: Request) {
   const session = await getSession();
 
-  if (!session) {
+  if (!session?.user_id) {
     return NextResponse.json({ error: "Not Authenticated" }, { status: 401 });
   }
 
-  const userIdBuffer = Buffer.from(session.user_id, "hex");
-
-  // Optional options from the address, e.g. ?limit=10&offset=10
-  // No options = the old behaviour: the last 5 orders.
+  // Optional query params for pagination
   const { searchParams } = new URL(request.url);
   const limitParam = Number(searchParams.get("limit"));
   const offsetParam = Number(searchParams.get("offset"));
@@ -25,7 +21,7 @@ export async function GET(request: Request) {
   const offset =
     Number.isInteger(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
 
-  const RecentOrdersQuery = `
+  const recentOrdersQuery = `
     SELECT order_type,
            order_id,
            name,
@@ -36,78 +32,74 @@ export async function GET(request: Request) {
            order_total,
            extra_items
     FROM (
+      -- 1. Marketplace Orders
       SELECT 'marketplace' AS order_type,
-             order_id,
-             name,
-             image,
-             wood_type,
-             ordered_at,
-             order_status,
-             order_total,
-             extra_items
-      FROM (
-        SELECT o.order_id AS order_id,
-               p.name AS name,
-               p.image AS image,
-               p.wood_type AS wood_type,
-               MIN(o.ordered_at) OVER (PARTITION BY o.order_id) AS ordered_at,
-               o.order_status AS order_status,
-               ROUND(
-                 SUM(o.total_price) OVER (PARTITION BY o.order_id)
-                 + o.shipping_cost
-                 + o.tax_amount,
-                 2
-               ) AS order_total,
-               COUNT(*) OVER (PARTITION BY o.order_id) - 1 AS extra_items,
-               ROW_NUMBER() OVER (
-                 PARTITION BY o.order_id
-                 ORDER BY o.total_price DESC, o.prod_id
-               ) AS rn
-        FROM orders o
-        JOIN products p ON p.prod_id = o.prod_id
-        WHERE o.user_id = :id
-      )
-      WHERE rn = 1
+             o.order_id::text AS order_id,
+             p.name AS name,
+             p.image AS image,
+             p.wood_type AS wood_type,
+             o.ordered_at AS ordered_at,
+             o.order_status AS order_status,
+             o.total_amount AS order_total,
+             (
+               SELECT COUNT(*) - 1 
+               FROM order_items oi2 
+               WHERE oi2.order_id = o.order_id
+             ) AS extra_items
+      FROM orders o
+      JOIN LATERAL (
+        SELECT oi.prod_id
+        FROM order_items oi
+        WHERE oi.order_id = o.order_id
+        ORDER BY oi.unit_price DESC
+        LIMIT 1
+      ) top_item ON TRUE
+      JOIN products p ON p.prod_id = top_item.prod_id
+      WHERE o.user_id = $1
 
       UNION ALL
 
+      -- 2. Custom Requests
       SELECT 'custom' AS order_type,
-             RAWTOHEX(c.customized_id) AS order_id,
+             c.customized_id::text AS order_id,
              c.req_title AS name,
-             c.custom_image AS image,
+             cg.image_url AS image,
              c.timber AS wood_type,
              c.requested_at AS ordered_at,
              c.customized_status AS order_status,
              c.quoted_price AS order_total,
              0 AS extra_items
       FROM customized_orders c
-      WHERE c.user_id = :id
-    )
+      LEFT JOIN custom_gallery cg 
+        ON c.customized_id = cg.customized_id AND cg.sort_order = 1
+      WHERE c.user_id = $1
+    ) combined_orders
     ORDER BY ordered_at DESC, order_id DESC
-    OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
+    LIMIT $2 OFFSET $3
+  `;
 
   let connection;
   try {
     connection = await getDatabaseConnection();
 
-    const result = await connection.execute(
-      RecentOrdersQuery,
-      { id: userIdBuffer, offset, limit },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
+    const result = await connection.query(recentOrdersQuery, [
+      session.user_id,
+      limit,
+      offset,
+    ]);
 
-    const rows = (result.rows ?? []) as any[];
+    const rows = result.rows || [];
 
     const orders = rows.map((row) => ({
-      type: row.ORDER_TYPE as "marketplace" | "custom",
-      id: String(row.ORDER_ID),
-      title: row.NAME,
-      image: row.IMAGE,
-      woodType: row.WOOD_TYPE,
-      date: row.ORDERED_AT,
-      status: row.ORDER_STATUS,
-      total: row.ORDER_TOTAL, // null for a custom order with no quote yet
-      extraItems: row.EXTRA_ITEMS,
+      type: row.order_type as "marketplace" | "custom",
+      id: row.order_id,
+      title: row.name,
+      image: row.image,
+      woodType: row.wood_type,
+      date: row.ordered_at,
+      status: row.order_status,
+      total: row.order_total, // null for custom orders prior to quoting
+      extraItems: Number(row.extra_items),
     }));
 
     return NextResponse.json({ orders });
@@ -118,6 +110,8 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   } finally {
-    await connection?.close();
+    if (connection) {
+      connection.release();
+    }
   }
 }

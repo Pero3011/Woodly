@@ -1,72 +1,54 @@
 import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import { NextResponse } from "next/server";
-import oracledb from "oracledb";
 
 export async function GET() {
   const session = await getSession();
 
-  if (!session) {
+  if (!session?.user_id) {
     return NextResponse.json({ error: "Not Authenticated" }, { status: 401 });
   }
 
-  const userIdBuffer = Buffer.from(session.user_id, "hex");
+  const userId = session.user_id;
 
-  const InvestementQuery = `
-    SELECT NVL(ROUND(SUM(order_total), 2), 0) AS TOTAL_INVESTEMENTS
-    FROM (
-      SELECT order_id,
-             SUM(total_price) + MAX(shipping_cost) + MAX(tax_amount) AS order_total
-      FROM orders
-      WHERE user_id = :id
-      GROUP BY order_id
-    )`;
+  const investmentQuery = `
+    SELECT COALESCE(ROUND(SUM(total_amount), 2), 0) AS total_investments
+    FROM orders
+    WHERE user_id = $1
+  `;
 
-  const PiecesOwnedQuery = `
-    SELECT NVL(SUM(quantity), 0) AS NUM_PIECES
-    FROM ORDERS
-    WHERE USER_ID = :id`;
+  const piecesOwnedQuery = `
+    SELECT COALESCE(COUNT(oi.item_id), 0) AS num_pieces
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.order_id
+    WHERE o.user_id = $1 AND oi.is_released = FALSE
+  `;
 
-  const CustomizedQuery = `
-    SELECT COUNT(*) AS NUM_CUSTOMIZED
-    FROM CUSTOMIZED_ORDERS
-    WHERE USER_ID = :id`;
+  const customizedQuery = `
+    SELECT COALESCE(COUNT(*), 0) AS num_customized
+    FROM customized_orders
+    WHERE user_id = $1
+  `;
 
   let connection;
   try {
     connection = await getDatabaseConnection();
 
-    const InvResult = await connection.execute(
-      InvestementQuery,
-      { id: userIdBuffer },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
+    // Execute queries concurrently for maximum speed
+    const [invResult, piecesResult, customResult] = await Promise.all([
+      connection.query(investmentQuery, [userId]),
+      connection.query(piecesOwnedQuery, [userId]),
+      connection.query(customizedQuery, [userId]),
+    ]);
 
-    const InvRow = (InvResult.rows as any[])?.[0];
-    const Total_Investements = InvRow?.TOTAL_INVESTEMENTS ?? 0;
-
-    const PiecesOwnedResult = await connection.execute(
-      PiecesOwnedQuery,
-      { id: userIdBuffer },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    const PiecesRow = (PiecesOwnedResult.rows as any[])?.[0];
-    const Pieces_Owned = PiecesRow?.NUM_PIECES ?? 0;
-
-    const CustomizedResult = await connection.execute(
-      CustomizedQuery,
-      { id: userIdBuffer },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-
-    const CustomizedRow = (CustomizedResult.rows as any[])?.[0];
-    const Custom_Commissions = CustomizedRow?.NUM_CUSTOMIZED ?? 0;
+    const totalInvestments = Number(invResult.rows[0]?.total_investments || 0);
+    const piecesOwned = Number(piecesResult.rows[0]?.num_pieces || 0);
+    const customCommissions = Number(customResult.rows[0]?.num_customized || 0);
 
     return NextResponse.json({
-      Investements: Total_Investements,
-      PiecesOwned: Pieces_Owned,
-      CustomCommissions: Custom_Commissions,
+      Investements: totalInvestments,
+      PiecesOwned: piecesOwned,
+      CustomCommissions: customCommissions,
     });
   } catch (err) {
     console.error("Profile stats error:", err);
@@ -75,6 +57,8 @@ export async function GET() {
       { status: 500 },
     );
   } finally {
-    await connection?.close();
+    if (connection) {
+      connection.release();
+    }
   }
 }

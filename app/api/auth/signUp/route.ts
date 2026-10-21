@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDatabaseConnection } from "@/lib/db";
 import bcrypt from "bcrypt";
-import oracledb from "oracledb";
 import { createToken } from "@/lib/auth";
 
-export async function POST(request: any) {
+export async function POST(request: Request) {
   let connection;
   try {
     connection = await getDatabaseConnection();
@@ -27,46 +26,39 @@ export async function POST(request: any) {
       );
     }
 
+    const emailNormalized = body.email.toLowerCase();
     const passwordHashed = await bcrypt.hash(body.password, 10);
     const role = body.role || "user";
+    const phone = body.phone || null;
 
-    await connection.execute(
-      `INSERT INTO users (name, phone, email, password, role) VALUES (:name, :phone, :email, :password, :role)`,
-      {
-        name: body.name,
-        Phone: body.phone,
-        Email: body.email,
-        Password: passwordHashed,
-        Role: role,
-      },
-      { autoCommit: true },
+    // Single query inserts and returns the created user
+    const insertResult = await connection.query(
+      `INSERT INTO users (name, phone, email, password, role)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING user_id, name, email, phone, role`,
+      [body.name, phone, emailNormalized, passwordHashed, role],
     );
 
-    const fetched = await connection.execute(
-      `select USER_ID,NAME,EMAIL,PASSWORD,PHONE,ROLE from users where email = :email`,
-      { email: body.email },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
-    const newUserRow = (fetched.rows as any[])[0];
+    const newUserRow = insertResult.rows[0];
 
-    //Generate Token
+    // Generate Token
     const token = await createToken({
-      user_id: newUserRow.USER_ID.toString("hex"),
-      user_name: newUserRow.NAME,
-      user_email: newUserRow.EMAIL,
-      user_phone: newUserRow.PHONE,
-      role: newUserRow.ROLE,
+      user_id: newUserRow.user_id,
+      user_name: newUserRow.name,
+      user_email: newUserRow.email,
+      user_phone: newUserRow.phone,
+      role: newUserRow.role,
     });
 
-    //Stores token in a cookie
+    // Stores token in a cookie
     const response = NextResponse.json({
       message: "Login successful",
       user: {
-        id: newUserRow.USER_ID,
-        email: newUserRow.EMAIL,
-        name: newUserRow.NAME,
-        phone: newUserRow.PHONE,
-        role: newUserRow.ROLE,
+        id: newUserRow.user_id,
+        email: newUserRow.email,
+        name: newUserRow.name,
+        phone: newUserRow.phone,
+        role: newUserRow.role,
       },
     });
 
@@ -80,13 +72,14 @@ export async function POST(request: any) {
 
     return response;
   } catch (error: any) {
+    console.error("Signup Error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },
     );
   } finally {
     if (connection) {
-      await connection.close();
+      connection.release();
     }
   }
 }

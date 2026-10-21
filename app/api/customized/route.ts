@@ -1,13 +1,12 @@
 import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import oracledb from "oracledb";
 
 // The image path must look exactly like what the upload route makes
 const UPLOADED_IMAGE_PATTERN =
   /^\/uploads\/sketches\/[0-9a-f-]{36}\.(png|jpg|pdf)$/i;
 
-// Change these to match your database column sizes
+// Match your database column sizes
 const LIMITS = {
   title: 100,
   instructions: 1000,
@@ -94,46 +93,45 @@ export async function POST(req: NextRequest) {
       return badRequest(`Size is too big (max ${LIMITS.maxSizeCm} cm)`);
     }
 
-    const query = `
-      INSERT INTO customized_orders (
-        USER_ID,
-        REQ_TITLE,
-        REQ_DESCRIPTION,
-        CUSTOM_IMAGE,
-        CUSTOMIZED_STATUS,
-        HEIGHT,
-        WIDTH,
-        TIMBER,
-        QUOTED_PRICE
-      ) VALUES (
-        :user_id,
-        :req_title,
-        :req_description,
-        :custom_image,
-        'pending',
-        :height,
-        :width,
-        :timber,
-        0
-      )
-    `;
-
-    const binds = {
-      user_id: Buffer.from(session.user_id, "hex"),
-      req_title: title,
-      req_description: instructions,
-      custom_image: img,
-      height: heightCm,
-      width: widthCm,
-      timber,
-    };
-
     connection = await getDatabaseConnection();
 
-    await connection.execute(query, binds, { autoCommit: true });
+    // Start transaction
+    await connection.query("BEGIN");
+
+    // 1. Insert into CUSTOMIZED_ORDERS
+    const customOrderResult = await connection.query(
+      `INSERT INTO customized_orders (
+        user_id,
+        req_title,
+        req_description,
+        height,
+        width,
+        timber,
+        customized_status
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      RETURNING customized_id`,
+      [session.user_id, title, instructions || null, heightCm, widthCm, timber],
+    );
+
+    const customizedId = customOrderResult.rows[0].customized_id;
+
+    // 2. Insert sketch into CUSTOM_GALLERY
+    await connection.query(
+      `INSERT INTO custom_gallery (
+        customized_id,
+        image_url,
+        sort_order
+      ) VALUES ($1, $2, 1)`,
+      [customizedId, img],
+    );
+
+    await connection.query("COMMIT");
 
     return NextResponse.json({ message: "Request created" }, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
+    if (connection) {
+      await connection.query("ROLLBACK");
+    }
     console.error("Customized POST Error:", err);
     return NextResponse.json(
       { error: "Could not create request" },
@@ -141,11 +139,7 @@ export async function POST(req: NextRequest) {
     );
   } finally {
     if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing connection:", closeErr);
-      }
+      connection.release();
     }
   }
 }
@@ -162,27 +156,26 @@ export async function GET() {
 
     const query = `
       SELECT
-        REQ_TITLE,
-        CUSTOM_IMAGE,
-        CUSTOMIZED_STATUS,
-        QUOTED_PRICE,
-        REQ_DESCRIPTION
-      FROM CUSTOMIZED_ORDERS
-      WHERE USER_ID = :id
+        c.req_title,
+        c.customized_status,
+        c.quoted_price,
+        c.req_description,
+        g.image_url AS custom_image
+      FROM customized_orders c
+      LEFT JOIN custom_gallery g 
+        ON c.customized_id = g.customized_id AND g.sort_order = 1
+      WHERE c.user_id = $1
+      ORDER BY c.requested_at DESC
     `;
 
     connection = await getDatabaseConnection();
 
-    const result = await connection.execute(
-      query,
-      { id: Buffer.from(session.user_id, "hex") },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT },
-    );
+    const result = await connection.query(query, [session.user_id]);
 
     const rows = result.rows || [];
 
     return NextResponse.json({ count: rows.length, orders: rows });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Customized GET Error:", err);
     return NextResponse.json(
       { error: "Could not load requests" },
@@ -190,11 +183,7 @@ export async function GET() {
     );
   } finally {
     if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing connection:", closeErr);
-      }
+      connection.release();
     }
   }
 }
