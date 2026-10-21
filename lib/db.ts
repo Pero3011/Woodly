@@ -1,16 +1,26 @@
-import { Pool, PoolClient } from "pg";
+import { Pool } from "pg";
 
-let pool: Pool;
+const globalForPg = globalThis as typeof globalThis & {
+  pgPool?: Pool;
+};
 
-export async function getDatabaseConnection(): Promise<PoolClient> {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false,
-      },
-      max: 10,
-    });
+function createPool() {
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not configured");
   }
-  return await pool.connect();
+
+  return new Pool({
+    connectionString,
+    max: 5,
+  });
 }
+
+const pool = globalForPg.pgPool ?? createPool();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPg.pgPool = pool;
+}
+
+export default pool;

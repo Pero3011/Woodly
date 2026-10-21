@@ -1,66 +1,63 @@
 import { createToken } from "@/lib/auth";
-import { getDatabaseConnection } from "@/lib/db";
+import pool from "@/lib/db";
 import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
 
-export async function POST(request: Request) {
-  let connection;
+export const runtime = "nodejs";
 
+export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    if (!body || !body.email || !body.password) {
+    if (!body?.email || !body?.password) {
       return NextResponse.json(
         { error: "Email and password are required" },
         { status: 400 },
       );
     }
 
-    connection = await getDatabaseConnection();
-
-    const result = await connection.query(
-      `SELECT user_id, name, email, password, phone, role FROM users WHERE email = $1`,
-      [body.email.toLowerCase()],
+    const result = await pool.query(
+      `SELECT user_id, name, email, password, phone, role
+       FROM users
+       WHERE email = $1
+       LIMIT 1`,
+      [body.email],
     );
 
-    const users = result.rows;
-
-    if (!users || users.length === 0) {
-      return NextResponse.json({ error: "User Not Found" }, { status: 404 });
-    }
-
-    const userFound = users[0];
-
-    const isPasswordValid = await bcrypt.compare(
-      body.password,
-      userFound.password,
-    );
-
-    if (!isPasswordValid) {
+    if (result.rows.length === 0) {
       return NextResponse.json(
-        { error: "Invalid Credentials..please try again!" },
+        { error: "Invalid email or password" },
         { status: 401 },
       );
     }
 
-    // Generate Token
+    const user = result.rows[0];
+
+    const isPasswordValid = await bcrypt.compare(body.password, user.password);
+
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 },
+      );
+    }
+
     const token = await createToken({
-      user_id: userFound.user_id,
-      user_name: userFound.name,
-      user_email: userFound.email,
-      user_phone: userFound.phone,
-      role: userFound.role,
+      user_id: String(user.user_id),
+      user_name: user.name,
+      user_email: user.email,
+      user_phone: user.phone,
+      role: user.role,
     });
 
-    // Stores token in a cookie
     const response = NextResponse.json({
       message: "Login successful",
       user: {
-        id: userFound.user_id,
-        email: userFound.email,
-        name: userFound.name,
-        phone: userFound.phone,
-        role: userFound.role,
+        id: user.user_id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
       },
     });
 
@@ -73,13 +70,12 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (err: any) {
-    console.error("Auth Error:", err);
+  } catch (error) {
+    console.error("Sign-in failed:", error);
+
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },
     );
-  } finally {
-    connection?.release();
   }
 }
