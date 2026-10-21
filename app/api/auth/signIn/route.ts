@@ -1,11 +1,13 @@
 import { createToken } from "@/lib/auth";
-import pool from "@/lib/db";
+import { getDatabaseConnection } from "@/lib/db";
 import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  let connection;
+
   try {
     const body = await request.json();
 
@@ -16,7 +18,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await pool.query(
+    connection = await getDatabaseConnection();
+
+    const result = await connection.query(
       `SELECT user_id, name, email, password, phone, role
        FROM users
        WHERE email = $1
@@ -77,5 +81,7 @@ export async function POST(request: Request) {
       { error: "Internal Server Error" },
       { status: 500 },
     );
+  } finally {
+    connection?.release();
   }
 }

@@ -4,28 +4,32 @@ const globalForPg = globalThis as typeof globalThis & {
   pgPool?: Pool;
 };
 
-function createPool() {
+function getPool(): Pool {
+  if (globalForPg.pgPool) {
+    return globalForPg.pgPool;
+  }
+
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
     throw new Error("DATABASE_URL is not configured");
   }
 
-  return new Pool({
+  const pool = new Pool({
     connectionString,
     max: 5,
   });
-}
 
-const pool = globalForPg.pgPool ?? createPool();
-
-if (process.env.NODE_ENV !== "production") {
   globalForPg.pgPool = pool;
+
+  return pool;
 }
 
-export default pool;
-
-// Temporary compatibility export for routes still being migrated.
 export async function getDatabaseConnection(): Promise<PoolClient> {
-  return pool.connect();
+  return getPool().connect();
 }
+
+export default {
+  query: (...args: Parameters<Pool["query"]>) => getPool().query(...args),
+  connect: () => getPool().connect(),
+};
