@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 
 const globalForPg = globalThis as typeof globalThis & {
   pgPool?: Pool;
@@ -24,3 +24,9 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export default pool;
+
+// Compatibility wrapper for routes being migrated.
+// Callers must use PostgreSQL query syntax and APIs.
+export async function getDatabaseConnection(): Promise<PoolClient> {
+  return pool.connect();
+}
