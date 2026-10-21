@@ -25,8 +25,7 @@ if (process.env.NODE_ENV !== "production") {
 
 export default pool;
 
-// Compatibility wrapper for routes being migrated.
-// Callers must use PostgreSQL query syntax and APIs.
+// Temporary compatibility export for routes still being migrated.
 export async function getDatabaseConnection(): Promise<PoolClient> {
   return pool.connect();
 }
