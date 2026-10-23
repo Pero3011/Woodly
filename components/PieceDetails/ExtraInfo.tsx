@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
 const TABS = ["Story", "Craft", "Shipping"] as const;
 type Tab = (typeof TABS)[number];
@@ -161,7 +162,7 @@ export default function ExtraInfo() {
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <span className="absolute bottom-3 right-3 bg-[#D98A3D] text-white text-xs font-semibold px-2.5 py-1 rounded-md">
-                  ${item.price.toLocaleString()}
+                  ${formatMoney(item.price)}
                 </span>
               </div>
               <h3 className="text-sm font-medium text-[#2A1E17]">
