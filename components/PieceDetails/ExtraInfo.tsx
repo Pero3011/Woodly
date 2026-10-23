@@ -162,7 +162,7 @@ export default function ExtraInfo() {
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <span className="absolute bottom-3 right-3 bg-[#D98A3D] text-white text-xs font-semibold px-2.5 py-1 rounded-md">
-                  ${formatMoney(item.price)}
+                  {formatMoney(item.price)}
                 </span>
               </div>
               <h3 className="text-sm font-medium text-[#2A1E17]">
