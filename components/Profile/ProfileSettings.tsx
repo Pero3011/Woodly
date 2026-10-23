@@ -17,7 +17,7 @@ import Link from "next/link";
 import { formatMoney } from "@/lib/money";
 
 type ProfileStats = {
-  Investements: number;
+  Investements: number | string | null;
   PiecesOwned: number;
   CustomCommissions: number;
 };
@@ -29,9 +29,24 @@ type RecentOrder = {
   woodType: string | null;
   date: string;
   status: string;
-  total: number;
+  total: number | string | null;
   extraItems: number;
 };
+
+// PostgreSQL numeric values may arrive as strings, and unquoted custom
+// requests may legitimately have no total yet. Keep formatMoney strict;
+// handle missing or malformed values at the UI boundary instead.
+function formatOptionalMoney(
+  value: number | string | null | undefined,
+  fallback = "—",
+): string {
+  if (value == null || value === "") return fallback;
+
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(amount)) return fallback;
+
+  return formatMoney(amount);
+}
 
 // Entrance animation "recipes". Each one has two states:
 // "hidden" (where an element starts) and "show" (where it ends up).
@@ -171,7 +186,7 @@ export default function ProfileSettings() {
       name: "Total Investements",
       icon: CircleDollarSign,
       value: statsData
-        ? formatMoney(statsData.Investements)
+        ? formatOptionalMoney(statsData.Investements)
         : placeholder,
     },
     {
@@ -510,7 +525,7 @@ export default function ProfileSettings() {
                         </span>
                       </td>
                       <td className="py-4 px-5 text-right font-semibold text-[#2A1E17]">
-                        {formatMoney(item.total)}
+                        {formatOptionalMoney(item.total, "Awaiting quote")}
                       </td>
                     </tr>
                   );
