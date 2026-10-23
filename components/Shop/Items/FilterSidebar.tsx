@@ -121,7 +121,7 @@ export default function FilterSidebar({
             <div className="flex justify-between text-xs text-[#5A2D0C] font-medium">
               <span>{formatMoney(100)}</span>
               <span>
-                ${formatMoney(filters.maxPrice)}
+                {formatMoney(filters.maxPrice)}
                 {filters.maxPrice >= 1000 ? "+" : ""}
               </span>
             </div>
