@@ -196,9 +196,6 @@ export default function ProfileSettings() {
     });
   }
 
-  function formatMoney(value: number) {
-    return formatMoney(value);
-  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
