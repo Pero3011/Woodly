@@ -9,10 +9,8 @@ import { useAuth } from "@/context/AuthContext";
 import Receipt, { ReceiptOrderData } from "@/components/Checkout/Receipt";
 import ConfirmOrder from "@/components/Checkout/ConfirmOrder";
 import { toast } from "sonner";
-
-// Placeholder rates until real shipping/tax logic is wired up to the backend
-const SHIPPING_RATE = 0.18;
-const TAX_RATE = 0.0738;
+import { formatMoney } from "@/lib/money";
+import { calculateTotals } from "@/lib/pricing";
 
 // Human-readable labels for the payment options CheckoutPage lets you pick.
 // Kept here (not inside Receipt) because Receipt shouldn't need to know
@@ -59,9 +57,10 @@ export default function CheckoutPage() {
     setShipping((prev) => ({ ...prev, [field]: value }));
   };
 
-  const tax = cartTotal * TAX_RATE;
-  const shippingCost = SHIPPING_RATE * cartTotal;
-  const total = cartTotal + shippingCost + tax;
+  const totals = calculateTotals(cartTotal);
+  const tax = totals.taxAmount;
+  const shippingCost = totals.shippingCost;
+  const total = totals.totalAmount;
 
   // STEP 1: "Place Order" builds the full order snapshot right away — the
   // confirmation modal needs the complete data (items, shipping, totals)
@@ -173,7 +172,7 @@ export default function CheckoutPage() {
 
                     <div className="flex flex-col items-end justify-between self-stretch">
                       <span className="text-sm font-semibold text-[#3A2E22]">
-                        ${(item.price * item.quantity).toFixed(2)}
+                        {formatMoney(item.price * item.quantity)}
                       </span>
                       <button
                         onClick={() => removeFromCart(item.id)}
@@ -321,24 +320,24 @@ export default function CheckoutPage() {
                 <div className="space-y-3 pb-4 border-b border-white/10 text-sm">
                   <div className="flex justify-between">
                     <span className="text-white/70">Subtotal</span>
-                    <span className="font-medium">${cartTotal.toFixed(2)}</span>
+                    <span className="font-medium">{formatMoney(cartTotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">Shipping (Express)</span>
                     <span className="font-medium">
-                      ${shippingCost.toFixed(2)}
+                      {formatMoney(shippingCost)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">Estimated Tax</span>
-                    <span className="font-medium">${tax.toFixed(2)}</span>
+                    <span className="font-medium">{formatMoney(tax)}</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center py-4">
                   <span className="font-semibold">Total</span>
                   <span className="text-lg font-semibold">
-                    ${total.toFixed(2)}
+                    {formatMoney(total)}
                   </span>
                 </div>
 

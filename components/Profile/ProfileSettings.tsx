@@ -14,6 +14,7 @@ import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { formatMoney } from "@/lib/money";
 
 type ProfileStats = {
   Investements: number;
@@ -170,10 +171,7 @@ export default function ProfileSettings() {
       name: "Total Investements",
       icon: CircleDollarSign,
       value: statsData
-        ? `${statsData.Investements.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}$`
+        ? formatMoney(statsData.Investements)
         : placeholder,
     },
     {
@@ -198,12 +196,6 @@ export default function ProfileSettings() {
     });
   }
 
-  function formatMoney(value: number) {
-    return `$${Number(value).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

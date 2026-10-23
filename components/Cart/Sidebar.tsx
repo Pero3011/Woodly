@@ -5,6 +5,7 @@ import { ReceiptText, X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 import Link from "next/link";
+import { formatMoney } from "@/lib/money";
 
 
 interface CartSideBarProps {
@@ -116,7 +117,7 @@ export default function CartSideBar({ isOpen, onClose }: CartSideBarProps) {
                         </div>
 
                         <span className="text-sm font-semibold text-[#5A2D0C]">
-                          {item.price * item.quantity} EGP
+                          {formatMoney(item.price * item.quantity)}
                         </span>
                       </div>
                     </div>
@@ -133,7 +134,7 @@ export default function CartSideBar({ isOpen, onClose }: CartSideBarProps) {
                     Subtotal
                   </span>
                   <span className="text-lg font-semibold text-[#5A2D0C]">
-                    {cartTotal} EGP
+                    {formatMoney(cartTotal)}
                   </span>
                 </div>
 

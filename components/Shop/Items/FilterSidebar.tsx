@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, Funnel, X } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
 interface FilterSidebarProps {
   filters: Filters;
@@ -118,9 +119,9 @@ export default function FilterSidebar({
               />
             </div>
             <div className="flex justify-between text-xs text-[#5A2D0C] font-medium">
-              <span>$100</span>
+              <span>{formatMoney(100)}</span>
               <span>
-                ${filters.maxPrice.toLocaleString()}
+                {formatMoney(filters.maxPrice)}
                 {filters.maxPrice >= 1000 ? "+" : ""}
               </span>
             </div>

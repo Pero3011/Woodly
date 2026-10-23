@@ -1,6 +1,7 @@
 import { ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
+import { formatMoney } from "@/lib/money";
 
 interface ItemCardProps {
   prod_id: string;
@@ -71,7 +72,7 @@ export default function ItemsCards({
             {category}
           </span>
           <span className="bg-[#D98A3D] text-white text-base font-semibold px-4 py-1.5 rounded-lg">
-            {price} EGP
+            {formatMoney(Number(price))}
           </span>
         </div>
 

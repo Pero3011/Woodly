@@ -4,6 +4,7 @@ import { useCart } from "@/context/CartContext";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { formatMoney } from "@/lib/money";
 
 interface DetailsProps {
   Prod_id: string;
@@ -57,11 +58,11 @@ export default function Details({
       {/* Price */}
       <div className="flex items-baseline gap-2 mb-6">
         <span className="text-2xl font-semibold text-[#D98A3D]">
-          ${Price.toLocaleString()}
+          {formatMoney(Price)}
         </span>
         {OriginalPrice && (
           <span className="text-base text-[#B5A794] line-through">
-            ${OriginalPrice.toLocaleString()}
+            {formatMoney(OriginalPrice)}
           </span>
         )}
       </div>
