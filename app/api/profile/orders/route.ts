@@ -21,6 +21,19 @@ export async function GET(request: Request) {
   const offset =
     Number.isInteger(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
 
+  // PostgreSQL numeric columns may be returned as strings by the driver.
+  // Preserve NULL for unquoted custom requests, but reject malformed non-null prices.
+  function normalizeOrderTotal(value: unknown): number | null {
+    if (value === null || value === undefined) return null;
+
+    const amount = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(amount)) {
+      throw new Error("Database returned an invalid order total.");
+    }
+
+    return amount;
+  }
+
   const recentOrdersQuery = `
     SELECT order_type,
            order_id,
@@ -98,7 +111,7 @@ export async function GET(request: Request) {
       woodType: row.wood_type,
       date: row.ordered_at,
       status: row.order_status,
-      total: row.order_total, // null for custom orders prior to quoting
+      total: normalizeOrderTotal(row.order_total), // null when a custom order has no quote yet
       extraItems: Number(row.extra_items),
     }));
 
