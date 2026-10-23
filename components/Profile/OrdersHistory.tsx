@@ -26,7 +26,7 @@ interface ApiOrder {
   woodType: string | null;
   date: string; // dates arrive as text (ISO format) in JSON
   status: string;
-  total: number | null; // null = custom order with no quote yet
+  total: number | string | null; // null = custom order with no quote yet
   extraItems: number;
 }
 
@@ -67,7 +67,15 @@ function capitalize(text: string) {
 }
 
 function formatPrice(order: ApiOrder) {
-  if (order.total !== null) return formatMoney(order.total);
+  // A quote may be missing, and PostgreSQL numeric values may arrive as strings.
+  // Validate at the UI boundary so formatMoney only receives a finite number.
+  if (order.total !== null && order.total !== undefined && order.total !== "") {
+    const amount =
+      typeof order.total === "number" ? order.total : Number(order.total);
+
+    if (Number.isFinite(amount)) return formatMoney(amount);
+  }
+
   return order.status.toLowerCase() === "rejected"
     ? "No quote"
     : "Awaiting quote";
