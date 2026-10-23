@@ -136,7 +136,7 @@ export default function ConfirmOrder({
                       <p className="text-[#6D5A4D]">Qty: {item.quantity}</p>
                     </div>
                     <p className="text-[#3A2E22]">
-                      ${formatMoney(item.price * item.quantity)}
+                      {formatMoney(item.price * item.quantity)}
                     </p>
                   </div>
                 ))}
@@ -146,19 +146,19 @@ export default function ConfirmOrder({
               <div className="px-6 py-4 border-t border-neutral-300 space-y-1 text-sm">
                 <div className="flex justify-between text-[#6D5A4D]">
                   <span>Subtotal</span>
-                  <span>${formatMoney(orderData.subtotal)}</span>
+                  <span>{formatMoney(orderData.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-[#6D5A4D]">
                   <span>Shipping</span>
-                  <span>${formatMoney(orderData.shippingCost)}</span>
+                  <span>{formatMoney(orderData.shippingCost)}</span>
                 </div>
                 <div className="flex justify-between text-[#6D5A4D]">
                   <span>Tax</span>
-                  <span>${formatMoney(orderData.tax)}</span>
+                  <span>{formatMoney(orderData.tax)}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-[#5A2D0C] pt-2 text-base">
                   <span>Total</span>
-                  <span>${formatMoney(orderData.total)}</span>
+                  <span>{formatMoney(orderData.total)}</span>
                 </div>
               </div>
 
