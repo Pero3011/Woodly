@@ -11,7 +11,9 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-// TODO: change this to the real path of your orders route
+import { formatMoney } from "@/lib/money";
+
+// Orders API
 const ORDERS_API_URL = "/api/profile/orders";
 const PAGE_SIZE = 10;
 
@@ -51,11 +53,6 @@ const FILTER_OPTIONS = [
   ["delivered", "Delivered"],
 ] as const;
 
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
-
 function formatDate(iso: string, type: ApiOrder["type"]) {
   const text = new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -70,7 +67,7 @@ function capitalize(text: string) {
 }
 
 function formatPrice(order: ApiOrder) {
-  if (order.total !== null) return currency.format(order.total);
+  if (order.total !== null) return formatMoney(order.total);
   return order.status.toLowerCase() === "rejected"
     ? "No quote"
     : "Awaiting quote";
