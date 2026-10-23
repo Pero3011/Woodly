@@ -172,7 +172,7 @@ export default function CheckoutPage() {
 
                     <div className="flex flex-col items-end justify-between self-stretch">
                       <span className="text-sm font-semibold text-[#3A2E22]">
-                        ${formatMoney(item.price * item.quantity)}
+                        {formatMoney(item.price * item.quantity)}
                       </span>
                       <button
                         onClick={() => removeFromCart(item.id)}
@@ -320,24 +320,24 @@ export default function CheckoutPage() {
                 <div className="space-y-3 pb-4 border-b border-white/10 text-sm">
                   <div className="flex justify-between">
                     <span className="text-white/70">Subtotal</span>
-                    <span className="font-medium">${formatMoney(cartTotal)}</span>
+                    <span className="font-medium">{formatMoney(cartTotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">Shipping (Express)</span>
                     <span className="font-medium">
-                      ${formatMoney(shippingCost)}
+                      {formatMoney(shippingCost)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-white/70">Estimated Tax</span>
-                    <span className="font-medium">${formatMoney(tax)}</span>
+                    <span className="font-medium">{formatMoney(tax)}</span>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center py-4">
                   <span className="font-semibold">Total</span>
                   <span className="text-lg font-semibold">
-                    ${formatMoney(total)}
+                    {formatMoney(total)}
                   </span>
                 </div>
 
