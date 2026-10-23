@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { formatMoney } from "@/lib/money";
 import { useEffect, useState } from "react";
 
 // Update type to include all statuses coming from your backend
@@ -69,7 +70,7 @@ export default function RequestsPanel() {
                     </div>
                     <div className="flex items-center text-xs text-primary mt-1">
                       <p className="text-neutral">{req.REQ_DESCRIPTION}</p>
-                      {req.QUOTED_PRICE != 0 && <span>{req.QUOTED_PRICE}</span>}
+                      {req.QUOTED_PRICE != null && <span>{formatMoney(Number(req.QUOTED_PRICE))}</span>}
                     </div>
                   </div>
                 </div>
