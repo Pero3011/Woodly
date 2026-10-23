@@ -41,9 +41,29 @@ export async function GET() {
       connection.query(customizedQuery, [userId]),
     ]);
 
-    const totalInvestments = Number(invResult.rows[0]?.total_investments || 0);
-    const piecesOwned = Number(piecesResult.rows[0]?.num_pieces || 0);
-    const customCommissions = Number(customResult.rows[0]?.num_customized || 0);
+    // Normalize PostgreSQL numeric/count results into finite JSON numbers.
+    // COALESCE in SQL handles empty aggregates; these guards protect against
+    // unexpected driver values without sending NaN or Infinity to the client.
+    function toFiniteNumber(value: unknown, field: string): number {
+      const number = typeof value === "number" ? value : Number(value ?? 0);
+      if (!Number.isFinite(number)) {
+        throw new Error(`Database returned an invalid ${field} value.`);
+      }
+      return number;
+    }
+
+    const totalInvestments = toFiniteNumber(
+      invResult.rows[0]?.total_investments,
+      "total investments",
+    );
+    const piecesOwned = toFiniteNumber(
+      piecesResult.rows[0]?.num_pieces,
+      "pieces owned",
+    );
+    const customCommissions = toFiniteNumber(
+      customResult.rows[0]?.num_customized,
+      "custom commissions",
+    );
 
     return NextResponse.json({
       Investements: totalInvestments,
