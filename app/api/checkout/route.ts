@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
           ITEM_NAME,
           UNIT_PRICE
         ) VALUES ($1, $2, $3, $4)`,
-        [orderId, item.id, item.name, item.unitPrice],
+        [orderId, item.id, item.name, item.unitPrice * item.quantity],
       );
     }
 
