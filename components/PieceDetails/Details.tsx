@@ -58,11 +58,11 @@ export default function Details({
       {/* Price */}
       <div className="flex items-baseline gap-2 mb-6">
         <span className="text-2xl font-semibold text-[#D98A3D]">
-          ${formatMoney(Price)}
+          {formatMoney(Price)}
         </span>
         {OriginalPrice && (
           <span className="text-base text-[#B5A794] line-through">
-            ${formatMoney(OriginalPrice)}
+            {formatMoney(OriginalPrice)}
           </span>
         )}
       </div>
