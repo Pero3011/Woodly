@@ -26,6 +26,7 @@ interface CheckoutBody {
 
 export async function POST(req: NextRequest) {
   let connection;
+  let transactionStarted = false;
 
   try {
     const session = await getSession();
@@ -108,6 +109,7 @@ export async function POST(req: NextRequest) {
 
     // Start the transaction before reading authoritative prices and writing rows.
     await connection.query("BEGIN");
+    transactionStarted = true;
 
     const productIds = [...new Set(requestedItems.map((item) => item.id))];
     const productResult = await connection.query(
@@ -129,6 +131,7 @@ export async function POST(req: NextRequest) {
 
     if (productById.size !== productIds.length) {
       await connection.query("ROLLBACK");
+      transactionStarted = false;
       return NextResponse.json(
         { error: "One or more products are no longer available" },
         { status: 400 },
@@ -163,9 +166,6 @@ export async function POST(req: NextRequest) {
     if (!Number.isFinite(subtotal) || !Number.isFinite(totalAmount)) {
       throw new Error("Checkout total is invalid.");
     }
-
-    // Start transaction block
-    await connection.query("BEGIN");
 
     // 1. Insert Order Header into ORDERS table
     const orderHeaderResult = await connection.query(
@@ -217,6 +217,7 @@ export async function POST(req: NextRequest) {
 
     // Commit transaction
     await connection.query("COMMIT");
+    transactionStarted = false;
 
     return NextResponse.json({
       order_id: orderId,
@@ -224,11 +225,13 @@ export async function POST(req: NextRequest) {
       item_count: body.items.length,
     });
   } catch (err: unknown) {
-    if (connection) {
+    if (connection && transactionStarted) {
       try {
         await connection.query("ROLLBACK");
       } catch (rollbackError) {
         console.error("Checkout rollback error:", rollbackError);
+      } finally {
+        transactionStarted = false;
       }
     }
     console.error("Checkout Error:", err);
