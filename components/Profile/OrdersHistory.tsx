@@ -30,7 +30,7 @@ interface ApiOrder {
   extraItems: number;
 }
 
-// Real statuses from your database check constraints:
+// Real statuses from database check constraints:
 // ORDERS:            pending, shipped, delivered, cancelled
 // CUSTOMIZED_ORDERS: pending, approved, rejected
 const STATUS_META: Record<string, { icon: typeof Wrench; color: string }> = {
@@ -42,7 +42,7 @@ const STATUS_META: Record<string, { icon: typeof Wrench; color: string }> = {
   cancelled: { icon: XCircle, color: "text-red-700" },
 };
 
-// Safety net for a status we don't know yet
+// Safety net for an unknown status
 const DEFAULT_STATUS_META = { icon: Clock, color: "text-stone-600" };
 
 const FILTER_OPTIONS = [
@@ -69,8 +69,6 @@ function capitalize(text: string) {
 }
 
 function formatPrice(order: ApiOrder) {
-  // A quote may be missing, and PostgreSQL numeric values may arrive as strings.
-  // Validate at the UI boundary so formatMoney only receives a finite number.
   if (order.total !== null && order.total !== undefined && order.total !== "") {
     const amount =
       typeof order.total === "number" ? order.total : Number(order.total);
@@ -96,7 +94,7 @@ function TypeBadge({ type }: { type: ApiOrder["type"] }) {
   const isCommission = type === "custom";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide uppercase ${
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold tracking-wide uppercase ${
         isCommission
           ? "bg-[#3d2b1f] text-[#f4ece1]"
           : "bg-[#e4d9c8] text-[#5c4a35]"
@@ -120,48 +118,51 @@ function OrderCard({ order, index }: { order: ApiOrder; index: number }) {
       viewport={{ once: true, amount: 0.25 }}
       className="flex flex-col gap-4 rounded-2xl border border-[#e7dcc9] p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5"
     >
-      {order.image ? (
-        <img
-          src={order.image}
-          alt={order.title}
-          className="h-32 w-32 shrink-0 rounded-xl object-cover sm:h-28 sm:w-28"
-        />
-      ) : (
-        <div className="h-32 w-32 shrink-0 rounded-xl bg-[#e4d9c8] sm:h-28 sm:w-28" />
-      )}
+      <div className="flex items-center justify-center sm:block shrink-0">
+        {order.image ? (
+          <img
+            src={order.image}
+            alt={order.title}
+            className="h-40 w-full sm:h-28 sm:w-28 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="h-40 w-full sm:h-28 sm:w-28 rounded-xl bg-[#e4d9c8]" />
+        )}
+      </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <TypeBadge type={order.type} />
           <span className="text-xs text-[#9c8b74]">
             #{order.id.slice(0, 8).toUpperCase()}
           </span>
         </div>
 
-        <h2 className="font-serif text-xl text-[#3d2b1f] sm:text-2xl">
+        <h2 className="font-serif text-lg sm:text-xl lg:text-2xl text-[#3d2b1f]">
           {order.title}
           {order.type === "marketplace" && order.extraItems > 0 && (
-            <span className="ml-2 text-sm text-[#8a7a63]">
+            <span className="ml-2 text-xs sm:text-sm text-[#8a7a63]">
               +{order.extraItems} more
             </span>
           )}
         </h2>
 
-        <p className="text-sm text-[#8a7a63]">
+        <p className="text-xs sm:text-sm text-[#8a7a63]">
           {formatDate(order.date, order.type)}
           {order.woodType && ` • ${order.woodType}`}
         </p>
 
-        <div className="mt-1 flex items-center gap-1.5 text-sm">
-          <StatusIcon className={`h-4 w-4 ${meta.color}`} />
+        <div className="mt-1 flex items-center gap-1.5 text-xs sm:text-sm">
+          <StatusIcon className={`h-4 w-4 shrink-0 ${meta.color}`} />
           <span className={`font-medium ${meta.color}`}>
             {capitalize(order.status)}
           </span>
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-row items-center justify-between gap-4 sm:flex-col sm:items-end sm:gap-3">
-        <span className="font-serif text-2xl text-[#3d2b1f]">
+      <div className="flex shrink-0 flex-row items-center justify-between border-t border-[#e7dcc9]/60 pt-3 sm:border-t-0 sm:pt-0 sm:flex-col sm:items-end sm:gap-3">
+        <span className="text-xs text-[#8a7a63] sm:hidden">Total Amount</span>
+        <span className="font-serif text-xl sm:text-2xl text-[#3d2b1f]">
           {formatPrice(order)}
         </span>
       </div>
@@ -179,7 +180,6 @@ export default function OrdersHistory() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
 
-  // First page: runs once when the component appears
   useEffect(() => {
     let ignore = false;
 
@@ -202,7 +202,6 @@ export default function OrdersHistory() {
     };
   }, []);
 
-  // Next pages: skip the orders we already have
   async function handleLoadMore() {
     setLoadingMore(true);
     setError(null);
@@ -223,27 +222,27 @@ export default function OrdersHistory() {
       : orders.filter((o) => o.status.toLowerCase() === filter);
 
   return (
-    <div className="min-h-screen max-w-5xl m-auto px-6 py-10 sm:px-10">
+    <div className="min-h-screen max-w-5xl m-auto px-4 py-6 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8 flex items-start justify-between gap-4"
+          className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-start justify-between gap-4"
         >
           <div>
-            <h1 className="font-serif text-4xl text-[#3d2b1f] sm:text-5xl">
+            <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl text-[#3d2b1f]">
               Order History
             </h1>
-            <p className="mt-2 text-[#8a7a63]">
+            <p className="mt-1 sm:mt-2 text-sm sm:text-base text-[#8a7a63]">
               Review your past commissions and marketplace acquisitions.
             </p>
           </div>
 
-          <div className="relative shrink-0">
+          <div className="relative self-start sm:self-auto shrink-0">
             <button
               onClick={() => setFilterOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-lg border border-[#e7dcc9] bg-white px-4 py-2 text-sm font-medium text-[#3d2b1f] shadow-sm transition hover:bg-[#faf3e7]"
+              className="flex items-center gap-2 rounded-lg border border-[#e7dcc9] bg-white px-3.5 py-2 text-xs sm:text-sm font-medium text-[#3d2b1f] shadow-sm transition hover:bg-[#faf3e7]"
             >
               <Filter className="h-4 w-4" />
               Filter
@@ -251,7 +250,7 @@ export default function OrdersHistory() {
             </button>
 
             {filterOpen && (
-              <div className="absolute right-0 z-10 mt-2 w-44 overflow-hidden rounded-lg border border-[#e7dcc9] bg-white shadow-lg">
+              <div className="absolute left-0 sm:left-auto sm:right-0 z-10 mt-2 w-44 overflow-hidden rounded-lg border border-[#e7dcc9] bg-white shadow-lg">
                 {FILTER_OPTIONS.map(([value, label]) => (
                   <button
                     key={value}
@@ -259,7 +258,7 @@ export default function OrdersHistory() {
                       setFilter(value);
                       setFilterOpen(false);
                     }}
-                    className={`block w-full px-4 py-2 text-left text-sm hover:bg-[#faf3e7] ${
+                    className={`block w-full px-4 py-2 text-left text-xs sm:text-sm hover:bg-[#faf3e7] ${
                       filter === value
                         ? "font-medium text-[#3d2b1f]"
                         : "text-[#8a7a63]"
@@ -274,14 +273,14 @@ export default function OrdersHistory() {
         </motion.div>
 
         {error && (
-          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-xs sm:text-sm text-red-700">
             {error}
           </div>
         )}
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 sm:gap-4">
           {loading && (
-            <div className="rounded-2xl border border-dashed border-[#e7dcc9] p-10 text-center text-[#8a7a63]">
+            <div className="rounded-2xl border border-dashed border-[#e7dcc9] p-8 sm:p-10 text-center text-xs sm:text-sm text-[#8a7a63]">
               Loading your orders...
             </div>
           )}
@@ -296,7 +295,7 @@ export default function OrdersHistory() {
             ))}
 
           {!loading && !error && filtered.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-[#e7dcc9] p-10 text-center text-[#8a7a63]">
+            <div className="rounded-2xl border border-dashed border-[#e7dcc9] p-8 sm:p-10 text-center text-xs sm:text-sm text-[#8a7a63]">
               {orders.length === 0
                 ? "You have no orders yet."
                 : "No orders match this filter."}
@@ -307,7 +306,7 @@ export default function OrdersHistory() {
             <button
               onClick={handleLoadMore}
               disabled={loadingMore}
-              className="mx-auto rounded-lg border border-[#3d2b1f] px-6 py-2 text-sm font-medium text-[#3d2b1f] transition hover:bg-[#3d2b1f] hover:text-[#f4ece1] disabled:opacity-50"
+              className="mx-auto mt-2 rounded-lg border border-[#3d2b1f] px-6 py-2 text-xs sm:text-sm font-medium text-[#3d2b1f] transition hover:bg-[#3d2b1f] hover:text-[#f4ece1] disabled:opacity-50"
             >
               {loadingMore ? "Loading..." : "Load more"}
             </button>

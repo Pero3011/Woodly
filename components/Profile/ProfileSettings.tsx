@@ -33,9 +33,6 @@ type RecentOrder = {
   extraItems: number;
 };
 
-// PostgreSQL numeric values may arrive as strings, and unquoted custom
-// requests may legitimately have no total yet. Keep formatMoney strict;
-// handle missing or malformed values at the UI boundary instead.
 function formatOptionalMoney(
   value: number | string | null | undefined,
   fallback = "—",
@@ -48,23 +45,16 @@ function formatOptionalMoney(
   return formatMoney(amount);
 }
 
-// Entrance animation "recipes". Each one has two states:
-// "hidden" (where an element starts) and "show" (where it ends up).
-
-// The page: does not move itself, it only makes its children start
-// one after another, 0.12 seconds apart.
 const pageVariants: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.12 } },
 };
 
-// The stats grid: same idea, but faster, so the 3 cards pop in quickly.
 const gridVariants: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.1 } },
 };
 
-// Fade in while sliding up 20px.
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: {
@@ -74,7 +64,6 @@ const fadeUp: Variants = {
   },
 };
 
-// Fade in only, with no movement.
 const fadeIn: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { duration: 0.5, ease: "easeOut" } },
@@ -84,8 +73,6 @@ export default function ProfileSettings() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const { user, refreshUser } = useAuth();
 
-  // Editable form state — separate from `user` so the modal has its own
-  // draft that only overwrites `user` once the save succeeds.
   const [formName, setFormName] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formEmail, setFormEmail] = useState("");
@@ -93,17 +80,14 @@ export default function ProfileSettings() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Account stats state: the numbers, the waiting flag, and the error message.
   const [statsData, setStatsData] = useState<ProfileStats | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
 
-  // Recent orders state: the list, the waiting flag, and the error message.
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [isOrdersLoading, setIsOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
 
-  // Seed the draft fields whenever we (re)load the user or open the modal.
   useEffect(() => {
     if (user) {
       setFormName(user.name ?? "");
@@ -112,7 +96,6 @@ export default function ProfileSettings() {
     }
   }, [user, isEditOpen]);
 
-  // Ask the server for the stats once, right after the page first shows.
   useEffect(() => {
     let ignore = false;
 
@@ -140,13 +123,11 @@ export default function ProfileSettings() {
 
     loadStats();
 
-    // Cleanup: if the user leaves the page early, ignore the late answer.
     return () => {
       ignore = true;
     };
   }, []);
 
-  // Ask the server for the last 5 orders once, right after the page first shows.
   useEffect(() => {
     let ignore = false;
 
@@ -211,7 +192,6 @@ export default function ProfileSettings() {
     });
   }
 
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
@@ -255,11 +235,10 @@ export default function ProfileSettings() {
       const response = await fetch("/api/profile", { method: "DELETE" });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => null);
+        await response.json().catch(() => null);
         return;
       }
 
-      // Session cookie is cleared server-side; redirect to logged-out state.
       window.location.href = "/";
     } catch (err) {
     } finally {
@@ -269,26 +248,23 @@ export default function ProfileSettings() {
 
   return (
     <motion.div
-      className="max-w-5xl m-auto py-10"
+      className="max-w-5xl m-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10"
       variants={pageVariants}
       initial="hidden"
       animate="show"
     >
-      {/* Edit Profile Details Modal.
-          It is NOT wrapped in a moving element on purpose: an element with a
-          transform becomes the "frame" for fixed children and would break
-          the full-screen overlay. */}
+      {/* Edit Profile Details Modal */}
       {isEditOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
           onClick={() => setIsEditOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-serif text-2xl text-[#2A1E17]">
+              <h2 className="font-serif text-xl sm:text-2xl text-[#2A1E17]">
                 Edit profile
               </h2>
               <button
@@ -369,12 +345,12 @@ export default function ProfileSettings() {
         </div>
       )}
 
-      {/* profile Card */}
+      {/* Profile Card */}
       <motion.div
         variants={fadeUp}
-        className="bg-white rounded-2xl border border-neutral-200 p-8 flex items-center gap-6"
+        className="bg-white rounded-2xl border border-neutral-200 p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6"
       >
-        <div className="relative w-24 h-24 shrink-0 rounded-full overflow-hidden border-4 border-white shadow-sm">
+        <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-full overflow-hidden border-4 border-white shadow-sm">
           <Image
             src={"/logo.png"}
             alt={"AvatarImage"}
@@ -384,10 +360,12 @@ export default function ProfileSettings() {
           />
         </div>
         <div>
-          <h1 className="font-serif text-4xl text-[#2A1E17]">{user?.name}</h1>
+          <h1 className="font-serif text-2xl sm:text-4xl text-[#2A1E17] break-all sm:break-normal">
+            {user?.name}
+          </h1>
           <button
             onClick={() => setIsEditOpen(true)}
-            className="mt-4 flex items-center gap-2 bg-[#EFE1CC] hover:bg-[#E5D4B8] text-[#5C4530] font-medium text-sm px-4 py-2 rounded-lg transition-colors"
+            className="mt-3 sm:mt-4 inline-flex items-center gap-2 bg-[#EFE1CC] hover:bg-[#E5D4B8] text-[#5C4530] font-medium text-sm px-4 py-2 rounded-lg transition-colors"
           >
             Edit profile settings
           </button>
@@ -395,25 +373,28 @@ export default function ProfileSettings() {
       </motion.div>
 
       {/* Stats Cards */}
-      <motion.div variants={fadeIn} className="mt-10">
-        <h2 className="font-serif text-2xl text-[#2A1E17] mb-4">
+      <motion.div variants={fadeIn} className="mt-8 sm:mt-10">
+        <h2 className="font-serif text-xl sm:text-2xl text-[#2A1E17] mb-4">
           Account Stats
         </h2>
         {statsError && (
           <p className="mb-3 text-sm text-red-700">{statsError}</p>
         )}
-        <motion.div variants={gridVariants} className="grid grid-cols-3 gap-4">
+        <motion.div
+          variants={gridVariants}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {stats.map((stat, index) => (
             <motion.div
               key={index}
               variants={fadeUp}
-              className="bg-[#EFE6D8] rounded-xl p-10"
+              className="bg-[#EFE6D8] rounded-xl p-5 sm:p-8 lg:p-10"
             >
-              <div className="flex items-center gap-2 text-neutral-500 text-s uppercase tracking-wider font-medium mb-2">
-                <stat.icon size={18} />
+              <div className="flex items-center gap-2 text-neutral-500 text-xs sm:text-sm uppercase tracking-wider font-medium mb-2">
+                <stat.icon size={18} className="shrink-0" />
                 <h1>{stat.name}</h1>
               </div>
-              <h1 className="font-serif text-3xl text-[#2A1E17]">
+              <h1 className="font-serif text-2xl sm:text-3xl text-[#2A1E17]">
                 {stat.value}
               </h1>
             </motion.div>
@@ -422,27 +403,29 @@ export default function ProfileSettings() {
       </motion.div>
 
       {/* Recent Orders */}
-      <motion.div variants={fadeUp} className="mt-10">
+      <motion.div variants={fadeUp} className="mt-8 sm:mt-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-serif text-2xl text-[#2A1E17]">
+          <h2 className="font-serif text-xl sm:text-2xl text-[#2A1E17]">
             Recent Acquisitions
           </h2>
           <Link
             href="/pages/profile/ordersHistory"
-            className="flex items-center gap-1 text-sm font-medium text-[#5C4530] hover:underline"
+            className="flex items-center gap-1 text-sm font-medium text-[#5C4530] hover:underline shrink-0"
           >
             View All <ArrowRight size={14} />
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-          <table className="w-full text-left">
+        <div className="bg-white rounded-xl border border-neutral-200 overflow-x-auto">
+          <table className="w-full text-left min-w-[600px]">
             <thead>
               <tr className="bg-[#3A2E22] text-[#F5EFE4] text-sm">
-                <th className="font-medium py-3 px-5">Piece</th>
-                <th className="font-medium py-3 px-5">Date</th>
-                <th className="font-medium py-3 px-5">Status</th>
-                <th className="font-medium py-3 px-5 text-right">Total</th>
+                <th className="font-medium py-3 px-4 sm:px-5">Piece</th>
+                <th className="font-medium py-3 px-4 sm:px-5">Date</th>
+                <th className="font-medium py-3 px-4 sm:px-5">Status</th>
+                <th className="font-medium py-3 px-4 sm:px-5 text-right">
+                  Total
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -480,9 +463,9 @@ export default function ProfileSettings() {
 
                   return (
                     <tr key={item.id} className="border-t border-neutral-100">
-                      <td className="py-4 px-5">
+                      <td className="py-4 px-4 sm:px-5">
                         <div className="flex items-center gap-3">
-                          <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-[#EFE6D8] shrink-0">
+                          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-[#EFE6D8] shrink-0">
                             <Image
                               src={item.image || "/logo.png"}
                               alt={item.title}
@@ -492,10 +475,10 @@ export default function ProfileSettings() {
                             />
                           </div>
                           <div>
-                            <div className="font-medium text-[#2A1E17]">
+                            <div className="font-medium text-[#2A1E17] text-sm sm:text-base">
                               {item.title}
                             </div>
-                            <div className="text-sm text-neutral-500">
+                            <div className="text-xs sm:text-sm text-neutral-500">
                               <span className="capitalize">
                                 {item.woodType}
                               </span>
@@ -506,12 +489,12 @@ export default function ProfileSettings() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-5 text-neutral-600">
+                      <td className="py-4 px-4 sm:px-5 text-xs sm:text-sm text-neutral-600 whitespace-nowrap">
                         {formatDate(item.date)}
                       </td>
-                      <td className="py-4 px-5">
+                      <td className="py-4 px-4 sm:px-5 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1 rounded-full capitalize ${
+                          className={`inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1 rounded-full capitalize ${
                             isDelivered
                               ? "bg-green-50 text-green-700"
                               : "bg-amber-50 text-amber-700"
@@ -525,7 +508,7 @@ export default function ProfileSettings() {
                           {item.status}
                         </span>
                       </td>
-                      <td className="py-4 px-5 text-right font-semibold text-[#2A1E17]">
+                      <td className="py-4 px-4 sm:px-5 text-right text-xs sm:text-sm font-semibold text-[#2A1E17] whitespace-nowrap">
                         {formatOptionalMoney(item.total, "Awaiting quote")}
                       </td>
                     </tr>
@@ -539,14 +522,14 @@ export default function ProfileSettings() {
 
       {/* Danger Zone */}
       <motion.div variants={fadeUp}>
-        <hr className="mt-10 border-neutral-200" />
-        <h2 className="font-serif text-2xl text-red-700 mt-10 mb-4">
+        <hr className="mt-8 sm:mt-10 border-neutral-200" />
+        <h2 className="font-serif text-xl sm:text-2xl text-red-700 mt-8 sm:mt-10 mb-4">
           Danger Zone
         </h2>
-        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-red-50 border border-red-200 rounded-xl p-4 sm:p-5">
           <div>
             <p className="font-semibold text-[#2A1E17]">Delete Account</p>
-            <p className="text-sm text-neutral-600">
+            <p className="text-xs sm:text-sm text-neutral-600">
               Once you delete your account, there is no going back. Please be
               certain.
             </p>
@@ -554,7 +537,7 @@ export default function ProfileSettings() {
           <button
             onClick={handleDeleteAccount}
             disabled={isDeleting}
-            className="bg-red-700 hover:bg-red-800 transition-colors text-white text-sm font-medium px-5 py-2.5 rounded-lg shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto bg-red-700 hover:bg-red-800 transition-colors text-white text-sm font-medium px-5 py-2.5 rounded-lg shrink-0 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isDeleting ? "Deleting..." : "Delete Account"}
           </button>

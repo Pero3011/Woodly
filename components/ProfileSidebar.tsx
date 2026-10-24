@@ -22,34 +22,39 @@ export default function ProfileSidebar() {
   const pathname = usePathname();
 
   const baseStyles =
-    "w-full flex items-center gap-2 mb-5 p-2 rounded-lg font-medium transition-colors";
+    "flex items-center gap-2 p-2 rounded-lg font-medium transition-colors whitespace-nowrap";
   const activeStyles = "bg-primary text-neutral-100";
   const inactiveStyles = "text-[#2A1E17] hover:bg-primary/10";
 
   return (
-    <aside className="w-64 min-h-screen bg-secondary p-6 text-[#2A1E17] border-r border-neutral-300">
-      <h1 className="text-2xl font-bold mb-6 text-[#5A2D0C]">
+    <aside
+      className="
+        w-full bg-secondary p-4 border-b border-neutral-300
+        md:w-64 md:min-h-screen md:p-6 md:border-b-0 md:border-r
+      "
+    >
+      <h1 className="text-xl md:text-2xl font-bold mb-3 md:mb-6 text-[#5A2D0C] hidden sm:block">
         Account Settings
       </h1>
 
-      <div className="grid grid-rows-2">
-        <ul>
+      <nav>
+        <ul className="flex flex-row gap-2 overflow-x-auto md:flex-col md:gap-0">
           {tabs.map(({ id, label, icon: Icon, path }) => {
             const isActive = pathname === path;
             return (
-              <li key={id}>
+              <li key={id} className="flex-shrink-0 md:mb-2">
                 <Link
                   href={path}
                   className={`${baseStyles} ${isActive ? activeStyles : inactiveStyles}`}
                 >
                   <Icon size={18} />
-                  {label}
+                  <span>{label}</span>
                 </Link>
               </li>
             );
           })}
         </ul>
-      </div>
+      </nav>
     </aside>
   );
 }

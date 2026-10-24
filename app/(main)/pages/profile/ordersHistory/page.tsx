@@ -7,9 +7,9 @@ export default function page() {
     <div className="w-full">
       <Navbar />
 
-      <div className="flex ">
+      <div className="lg:flex">
         <Sidebar />
-        <div className="flex-1">
+        <div className="lg:flex-1">
           <OrdersHistory />
         </div>
       </div>
