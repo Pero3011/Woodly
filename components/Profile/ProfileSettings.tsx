@@ -82,7 +82,7 @@ const fadeIn: Variants = {
 
 export default function ProfileSettings() {
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   // Editable form state — separate from `user` so the modal has its own
   // draft that only overwrites `user` once the save succeeds.
@@ -235,6 +235,7 @@ export default function ProfileSettings() {
         return;
       }
 
+      await refreshUser();
       setIsEditOpen(false);
     } catch (err) {
       setFormError("Network error. Please check your connection.");

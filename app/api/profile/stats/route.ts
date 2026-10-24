@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
+import { asFiniteNumber } from "@/lib/pg";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -14,20 +15,20 @@ export async function GET() {
   const investmentQuery = `
     SELECT COALESCE(ROUND(SUM(total_amount), 2), 0) AS total_investments
     FROM orders
-    WHERE user_id = $1
+    WHERE user_id = $1::uuid
   `;
 
   const piecesOwnedQuery = `
     SELECT COALESCE(COUNT(oi.item_id), 0) AS num_pieces
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.order_id
-    WHERE o.user_id = $1 AND oi.is_released = FALSE
+    WHERE o.user_id = $1::uuid AND oi.is_released = FALSE
   `;
 
   const customizedQuery = `
     SELECT COALESCE(COUNT(*), 0) AS num_customized
     FROM customized_orders
-    WHERE user_id = $1
+    WHERE user_id = $1::uuid
   `;
 
   let connection;
@@ -41,27 +42,16 @@ export async function GET() {
       connection.query(customizedQuery, [userId]),
     ]);
 
-    // Normalize PostgreSQL numeric/count results into finite JSON numbers.
-    // COALESCE in SQL handles empty aggregates; these guards protect against
-    // unexpected driver values without sending NaN or Infinity to the client.
-    function toFiniteNumber(value: unknown, field: string): number {
-      const number = typeof value === "number" ? value : Number(value ?? 0);
-      if (!Number.isFinite(number)) {
-        throw new Error(`Database returned an invalid ${field} value.`);
-      }
-      return number;
-    }
-
-    const totalInvestments = toFiniteNumber(
-      invResult.rows[0]?.total_investments,
+    const totalInvestments = asFiniteNumber(
+      invResult.rows[0]?.total_investments ?? 0,
       "total investments",
     );
-    const piecesOwned = toFiniteNumber(
-      piecesResult.rows[0]?.num_pieces,
+    const piecesOwned = asFiniteNumber(
+      piecesResult.rows[0]?.num_pieces ?? 0,
       "pieces owned",
     );
-    const customCommissions = toFiniteNumber(
-      customResult.rows[0]?.num_customized,
+    const customCommissions = asFiniteNumber(
+      customResult.rows[0]?.num_customized ?? 0,
       "custom commissions",
     );
 

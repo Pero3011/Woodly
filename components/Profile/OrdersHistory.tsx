@@ -31,7 +31,7 @@ interface ApiOrder {
 }
 
 // Real statuses from your database check constraints:
-// ORDERS:            pending, shipped, delivered
+// ORDERS:            pending, shipped, delivered, cancelled
 // CUSTOMIZED_ORDERS: pending, approved, rejected
 const STATUS_META: Record<string, { icon: typeof Wrench; color: string }> = {
   pending: { icon: Clock, color: "text-stone-600" },
@@ -39,6 +39,7 @@ const STATUS_META: Record<string, { icon: typeof Wrench; color: string }> = {
   rejected: { icon: XCircle, color: "text-red-700" },
   shipped: { icon: Truck, color: "text-blue-700" },
   delivered: { icon: CheckCircle2, color: "text-green-700" },
+  cancelled: { icon: XCircle, color: "text-red-700" },
 };
 
 // Safety net for a status we don't know yet
@@ -51,6 +52,7 @@ const FILTER_OPTIONS = [
   ["rejected", "Rejected"],
   ["shipped", "Shipped"],
   ["delivered", "Delivered"],
+  ["cancelled", "Cancelled"],
 ] as const;
 
 function formatDate(iso: string, type: ApiOrder["type"]) {

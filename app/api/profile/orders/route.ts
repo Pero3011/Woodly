@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
+import { asMoneyOrNull, asUuid } from "@/lib/pg";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -20,19 +21,6 @@ export async function GET(request: Request) {
       : 5;
   const offset =
     Number.isInteger(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
-
-  // PostgreSQL numeric columns may be returned as strings by the driver.
-  // Preserve NULL for unquoted custom requests, but reject malformed non-null prices.
-  function normalizeOrderTotal(value: unknown): number | null {
-    if (value === null || value === undefined) return null;
-
-    const amount = typeof value === "number" ? value : Number(value);
-    if (!Number.isFinite(amount)) {
-      throw new Error("Database returned an invalid order total.");
-    }
-
-    return amount;
-  }
 
   const recentOrdersQuery = `
     SELECT order_type,
@@ -64,11 +52,12 @@ export async function GET(request: Request) {
         SELECT oi.prod_id
         FROM order_items oi
         WHERE oi.order_id = o.order_id
+          AND oi.prod_id IS NOT NULL
         ORDER BY oi.unit_price DESC
         LIMIT 1
       ) top_item ON TRUE
       JOIN products p ON p.prod_id = top_item.prod_id
-      WHERE o.user_id = $1
+      WHERE o.user_id = $1::uuid
 
       UNION ALL
 
@@ -85,7 +74,7 @@ export async function GET(request: Request) {
       FROM customized_orders c
       LEFT JOIN custom_gallery cg 
         ON c.customized_id = cg.customized_id AND cg.sort_order = 1
-      WHERE c.user_id = $1
+      WHERE c.user_id = $1::uuid
     ) combined_orders
     ORDER BY ordered_at DESC, order_id DESC
     LIMIT $2 OFFSET $3
@@ -105,13 +94,13 @@ export async function GET(request: Request) {
 
     const orders = rows.map((row) => ({
       type: row.order_type as "marketplace" | "custom",
-      id: row.order_id,
+      id: asUuid(row.order_id),
       title: row.name,
       image: row.image,
       woodType: row.wood_type,
       date: row.ordered_at,
       status: row.order_status,
-      total: normalizeOrderTotal(row.order_total), // null when a custom order has no quote yet
+      total: asMoneyOrNull(row.order_total),
       extraItems: Number(row.extra_items),
     }));
 

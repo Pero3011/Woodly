@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession, updateSessionUser } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
+import { FIELD_LIMITS } from "@/lib/fieldLimits";
+import { asUuid, isUniqueViolation } from "@/lib/pg";
 import { cookies } from "next/headers";
 
 // GET the current logged in User
@@ -11,7 +13,7 @@ export async function GET() {
   }
   return NextResponse.json({
     user: {
-      id: session.user_id,
+      id: asUuid(session.user_id),
       email: session.user_email,
       name: session.user_name,
       phone: session.user_phone,
@@ -37,9 +39,21 @@ export async function PUT(request: Request) {
     const user_email =
       typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
 
-    if (!name || !user_email) {
+    if (
+      !name ||
+      name.length > FIELD_LIMITS.userName ||
+      !user_email ||
+      user_email.length > FIELD_LIMITS.email
+    ) {
       return NextResponse.json(
-        { error: "Name and email are required" },
+        { error: "Name and email are required and must fit allowed length" },
+        { status: 400 },
+      );
+    }
+
+    if (phone.length > FIELD_LIMITS.phone) {
+      return NextResponse.json(
+        { error: "Phone number is too long" },
         { status: 400 },
       );
     }
@@ -48,7 +62,7 @@ export async function PUT(request: Request) {
 
     // Check if the new email belongs to another user
     const existing = await connection.query(
-      `SELECT user_id FROM users WHERE email = $1 AND user_id != $2`,
+      `SELECT user_id FROM users WHERE email = $1 AND user_id != $2::uuid`,
       [user_email, session.user_id],
     );
 
@@ -63,7 +77,7 @@ export async function PUT(request: Request) {
     const updateResult = await connection.query(
       `UPDATE users
        SET name = $1, phone = $2, email = $3
-       WHERE user_id = $4
+       WHERE user_id = $4::uuid
        RETURNING user_id, name, email, phone, role`,
       [name, phone || null, user_email, session.user_id],
     );
@@ -78,14 +92,20 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({
       user: {
-        id: row.user_id,
+        id: asUuid(row.user_id),
         name: row.name,
         email: row.email,
         phone: row.phone,
         role: row.role,
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    if (isUniqueViolation(err)) {
+      return NextResponse.json(
+        { error: "That email is already in use" },
+        { status: 409 },
+      );
+    }
     console.error("Update Profile Error:", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
@@ -110,7 +130,7 @@ export async function DELETE() {
   try {
     connection = await getDatabaseConnection();
 
-    await connection.query(`DELETE FROM users WHERE user_id = $1`, [
+    await connection.query(`DELETE FROM users WHERE user_id = $1::uuid`, [
       session.user_id,
     ]);
 

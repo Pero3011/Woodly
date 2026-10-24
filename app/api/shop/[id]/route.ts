@@ -1,4 +1,5 @@
 import { getDatabaseConnection } from "@/lib/db";
+import { asMoney, asUuid } from "@/lib/pg";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -14,15 +15,16 @@ export async function GET(
 
     // 1. Prepare queries for product details and gallery images
     const productQuery = `
-      SELECT prod_id, name, description, category, price
+      SELECT prod_id, name, description, category, price, image
       FROM products
-      WHERE prod_id = $1
+      WHERE prod_id = $1::uuid
+        AND product_status = 'available'
     `;
 
     const galleryQuery = `
       SELECT image_url
       FROM prodgallery
-      WHERE prod_id = $1
+      WHERE prod_id = $1::uuid
       ORDER BY sort_order ASC
     `;
 
@@ -43,12 +45,13 @@ export async function GET(
 
     // Format final product object
     const product = {
-      prod_id: prodRow.prod_id,
+      prod_id: asUuid(prodRow.prod_id),
       prod_name: prodRow.name,
       prod_description: prodRow.description,
       prod_category: prodRow.category,
-      prod_price: Number(prodRow.price),
-      prod_imgs: images,
+      prod_price: asMoney(prodRow.price),
+      prod_img: prodRow.image,
+      prod_imgs: images.length > 0 ? images : prodRow.image ? [prodRow.image] : [],
     };
 
     return NextResponse.json({ product });

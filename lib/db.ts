@@ -15,9 +15,15 @@ function getPool(): Pool {
     throw new Error("DATABASE_URL is not configured");
   }
 
+  const isLocal =
+    /localhost|127\.0\.0\.1/.test(connectionString) &&
+    !connectionString.includes("neon.tech");
+
   const pool = new Pool({
     connectionString,
     max: 5,
+    // Neon (and most hosted Postgres) requires TLS outside local dev.
+    ssl: isLocal ? undefined : { rejectUnauthorized: false },
   });
 
   globalForPg.pgPool = pool;

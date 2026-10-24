@@ -1,5 +1,6 @@
 import { createToken } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
+import { asUuid } from "@/lib/pg";
 import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
 
@@ -18,6 +19,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const email = String(body.email).trim().toLowerCase();
+
     connection = await getDatabaseConnection();
 
     const result = await connection.query(
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
        FROM users
        WHERE email = $1
        LIMIT 1`,
-      [body.email],
+      [email],
     );
 
     if (result.rows.length === 0) {
@@ -46,18 +49,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const userId = asUuid(user.user_id);
+
     const token = await createToken({
-      user_id: String(user.user_id),
+      user_id: userId,
       user_name: user.name,
       user_email: user.email,
-      user_phone: user.phone,
+      user_phone: user.phone ?? "",
       role: user.role,
     });
 
     const response = NextResponse.json({
       message: "Login successful",
       user: {
-        id: user.user_id,
+        id: userId,
         email: user.email,
         name: user.name,
         phone: user.phone,

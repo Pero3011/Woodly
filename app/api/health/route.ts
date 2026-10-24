@@ -17,8 +17,12 @@ export async function GET() {
   } catch (error) {
     console.error("Health check failed:", error);
 
-    return NextResponse.json(
-      { status: "unavailable", database: "disconnected" },
+    return Response.json(
+      {
+        status: "unavailable",
+        database: "disconnected",
+        error: error instanceof Error ? error.message : String(error),
+      },
       { status: 503 },
     );
   } finally {

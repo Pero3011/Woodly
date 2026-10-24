@@ -31,6 +31,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     try {
       const res = await fetch("/api/profile");
+      if (!res.ok) {
+        setUser(null);
+        return;
+      }
+
       const data = await res.json();
       setUser(data.user ?? null);
     } catch {
@@ -41,7 +46,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    refreshUser();
+    let cancelled = false;
+
+    const loadUser = async () => {
+      try {
+        const res = await fetch("/api/profile");
+
+        if (!res.ok) {
+          if (!cancelled) setUser(null);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!cancelled) setUser(data.user ?? null);
+      } catch {
+        if (!cancelled) setUser(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

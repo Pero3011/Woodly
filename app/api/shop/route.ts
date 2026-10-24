@@ -1,4 +1,5 @@
 import { getDatabaseConnection } from "@/lib/db";
+import { asMoney, asUuid } from "@/lib/pg";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       : [];
 
     // 3. Build Dynamic WHERE Clause and Parameter Array
-    let filterClause = ` WHERE 1=1`;
+    let filterClause = ` WHERE product_status = 'available'`;
     const values: any[] = [];
     let paramIndex = 1;
 
@@ -75,11 +76,11 @@ export async function GET(request: NextRequest) {
 
     // 6. Format Output for Frontend
     const products = rows.map((row) => ({
-      prod_id: row.prod_id,
+      prod_id: asUuid(row.prod_id),
       prod_name: row.name,
       prod_description: row.description,
       prod_category: row.category,
-      prod_price: Number(row.price),
+      prod_price: asMoney(row.price),
       prod_img: row.image,
     }));
 
@@ -88,6 +89,7 @@ export async function GET(request: NextRequest) {
       meta: {
         currentPage: page,
         pageSize: limit,
+        totalItems,
         totalPages: Math.ceil(totalItems / limit) || 1,
       },
     });

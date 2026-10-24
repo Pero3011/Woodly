@@ -7,7 +7,7 @@ interface ItemCardProps {
   prod_id: string;
   image: string;
   category: string;
-  price: string;
+  price: number;
   title: string;
   description: string;
   layout?: "grid" | "list";

@@ -17,7 +17,8 @@ export interface Filters {
   sortBy: "newest" | "price-asc" | "price-desc";
 }
 
-const CATEGORIES = ["Wall Decor", "Living Room", "Decor", "Desk Accessories"];
+// Must match products.category CHECK constraint in woodly.sql
+const CATEGORIES = ["Wall Decor", "Desk Decor", "Masterpieces"];
 const WOOD_TYPES = ["walnut", "oak", "maple"];
 
 const INITIAL_FILTERS: Filters = {

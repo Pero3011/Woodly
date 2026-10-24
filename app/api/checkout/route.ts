@@ -1,5 +1,8 @@
 import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
+import { FIELD_LIMITS } from "@/lib/fieldLimits";
+import { calculateTotals } from "@/lib/pricing";
+import { asMoney, asUuid, isUniqueViolation } from "@/lib/pg";
 import { NextRequest, NextResponse } from "next/server";
 
 interface CheckoutItem {
@@ -20,8 +23,6 @@ interface CheckoutBody {
     postcode: string;
   };
   paymentMethod: string;
-  shippingCost: number;
-  tax: number;
 }
 
 export async function POST(req: NextRequest) {
@@ -70,36 +71,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const shippingCost = Number(body.shippingCost);
-    const tax = Number(body.tax);
+    const ship = body.shipping;
+    const paymentMethod = body.paymentMethod.trim();
     if (
-      !Number.isFinite(shippingCost) ||
-      shippingCost < 0 ||
-      !Number.isFinite(tax) ||
-      tax < 0
+      ship.firstName.length > FIELD_LIMITS.shipFirstName ||
+      ship.lastName.length > FIELD_LIMITS.shipLastName ||
+      ship.address.length > FIELD_LIMITS.shipAddress ||
+      ship.city.length > FIELD_LIMITS.shipCity ||
+      ship.postcode.length > FIELD_LIMITS.shipPostcode ||
+      paymentMethod.length > FIELD_LIMITS.paymentMethod
     ) {
       return NextResponse.json(
-        { error: "Shipping and tax must be valid non-negative amounts" },
+        { error: "Shipping or payment details exceed allowed length" },
         { status: 400 },
       );
     }
 
-    const requestedItems: { id: string; quantity: number }[] = [];
+    const requestedItems: { id: string }[] = [];
+    const seenIds = new Set<string>();
     for (const item of body.items) {
       if (
         !item ||
         typeof item.id !== "string" ||
         !item.id.trim() ||
         !Number.isSafeInteger(item.quantity) ||
-        item.quantity < 1 ||
-        item.quantity > 100
+        item.quantity !== 1
       ) {
         return NextResponse.json(
-          { error: "Each cart item must have a valid product ID and quantity" },
+          {
+            error:
+              "Each piece is one-of-a-kind — quantity must be 1 per product",
+          },
           { status: 400 },
         );
       }
-      requestedItems.push({ id: item.id.trim(), quantity: item.quantity });
+      const id = item.id.trim();
+      if (seenIds.has(id)) {
+        return NextResponse.json(
+          { error: "Duplicate products in cart" },
+          { status: 400 },
+        );
+      }
+      seenIds.add(id);
+      requestedItems.push({ id });
     }
 
     // Generate short unique order code (e.g. "A1B2C3D4")
@@ -111,20 +125,21 @@ export async function POST(req: NextRequest) {
     await connection.query("BEGIN");
     transactionStarted = true;
 
-    const productIds = [...new Set(requestedItems.map((item) => item.id))];
+    const productIds = requestedItems.map((item) => item.id);
     const productResult = await connection.query(
-      `SELECT prod_id, name, price
+      `SELECT prod_id, name, price, product_status
        FROM products
-       WHERE prod_id = ANY($1)`,
+       WHERE prod_id = ANY($1::uuid[])`,
       [productIds],
     );
 
     const productById = new Map(
       productResult.rows.map((row) => [
-        String(row.prod_id),
+        asUuid(row.prod_id),
         {
           name: String(row.name),
-          price: Number(row.price),
+          price: asMoney(row.price),
+          productStatus: String(row.product_status),
         },
       ]),
     );
@@ -139,8 +154,13 @@ export async function POST(req: NextRequest) {
     }
 
     for (const product of productById.values()) {
-      if (!Number.isFinite(product.price) || product.price < 0) {
-        throw new Error("A product has an invalid database price.");
+      if (product.productStatus !== "available") {
+        await connection.query("ROLLBACK");
+        transactionStarted = false;
+        return NextResponse.json(
+          { error: "One or more products are no longer available" },
+          { status: 400 },
+        );
       }
     }
 
@@ -151,39 +171,31 @@ export async function POST(req: NextRequest) {
       }
       return {
         id: item.id,
-        quantity: item.quantity,
         name: product.name,
         unitPrice: product.price,
       };
     });
 
-    const subtotal = orderItems.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0,
-    );
-    const totalAmount = subtotal + shippingCost + tax;
-
-    if (!Number.isFinite(subtotal) || !Number.isFinite(totalAmount)) {
-      throw new Error("Checkout total is invalid.");
-    }
+    const subtotal = orderItems.reduce((sum, item) => sum + item.unitPrice, 0);
+    const { shippingCost, taxAmount, totalAmount } = calculateTotals(subtotal);
 
     // 1. Insert Order Header into ORDERS table
     const orderHeaderResult = await connection.query(
-      `INSERT INTO ORDERS (
-        ORDER_CODE,
-        USER_ID,
-        SHIP_FIRST_NAME,
-        SHIP_LAST_NAME,
-        SHIP_ADDRESS,
-        SHIP_CITY,
-        SHIP_POSTCODE,
-        PAYMENT_METHOD,
-        SUBTOTAL,
-        SHIPPING_COST,
-        TAX_AMOUNT,
-        TOTAL_AMOUNT
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING ORDER_ID`,
+      `INSERT INTO orders (
+        order_code,
+        user_id,
+        ship_first_name,
+        ship_last_name,
+        ship_address,
+        ship_city,
+        ship_postcode,
+        payment_method,
+        subtotal,
+        shipping_cost,
+        tax_amount,
+        total_amount
+      ) VALUES ($1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING order_id`,
       [
         orderCode,
         session.user_id,
@@ -192,28 +204,35 @@ export async function POST(req: NextRequest) {
         body.shipping.address,
         body.shipping.city,
         body.shipping.postcode,
-        body.paymentMethod.trim(),
+        paymentMethod,
         subtotal,
         shippingCost,
-        tax,
+        taxAmount,
         totalAmount,
       ],
     );
 
-    const orderId = orderHeaderResult.rows[0].order_id;
+    const orderId = asUuid(orderHeaderResult.rows[0].order_id);
 
-    // 2. Insert line items into ORDER_ITEMS table
     for (const item of orderItems) {
       await connection.query(
-        `INSERT INTO ORDER_ITEMS (
-          ORDER_ID,
-          PROD_ID,
-          ITEM_NAME,
-          UNIT_PRICE
-        ) VALUES ($1, $2, $3, $4)`,
-        [orderId, item.id, item.name, item.unitPrice * item.quantity],
+        `INSERT INTO order_items (
+          order_id,
+          prod_id,
+          item_name,
+          unit_price
+        ) VALUES ($1::uuid, $2::uuid, $3, $4)`,
+        [orderId, item.id, item.name, item.unitPrice],
       );
     }
+
+    await connection.query(
+      `UPDATE products
+       SET product_status = 'sold'
+       WHERE prod_id = ANY($1::uuid[])
+         AND product_status = 'available'`,
+      [productIds],
+    );
 
     // Commit transaction
     await connection.query("COMMIT");
@@ -225,6 +244,21 @@ export async function POST(req: NextRequest) {
       item_count: body.items.length,
     });
   } catch (err: unknown) {
+    if (isUniqueViolation(err)) {
+      if (connection && transactionStarted) {
+        try {
+          await connection.query("ROLLBACK");
+        } catch {
+          /* ignore */
+        }
+        transactionStarted = false;
+      }
+      return NextResponse.json(
+        { error: "One or more products were just purchased by someone else" },
+        { status: 409 },
+      );
+    }
+
     if (connection && transactionStarted) {
       try {
         await connection.query("ROLLBACK");

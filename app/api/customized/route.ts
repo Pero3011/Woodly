@@ -1,18 +1,14 @@
 import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
+import { FIELD_LIMITS } from "@/lib/fieldLimits";
+import { asMoneyOrNull, asUuid } from "@/lib/pg";
 import { NextRequest, NextResponse } from "next/server";
 
 // The image path must look exactly like what the upload route makes
 const UPLOADED_IMAGE_PATTERN =
   /^\/uploads\/sketches\/[0-9a-f-]{36}\.(png|jpg|pdf)$/i;
 
-// Match your database column sizes
-const LIMITS = {
-  title: 100,
-  instructions: 1000,
-  timber: 100,
-  maxSizeCm: 1000,
-};
+const MAX_SIZE_CM = 1000;
 
 // The database stores size in cm, so we convert everything to cm
 const UNIT_TO_CM: Record<string, number> = { cm: 1, mm: 0.1, in: 2.54 };
@@ -32,6 +28,7 @@ function badRequest(message: string) {
 
 export async function POST(req: NextRequest) {
   let connection;
+  let transactionStarted = false;
 
   try {
     const session = await getSession();
@@ -59,21 +56,23 @@ export async function POST(req: NextRequest) {
     const width = toPositiveNumber(body.width);
     const height = toPositiveNumber(body.height);
 
-    if (!title || title.length > LIMITS.title) {
-      return badRequest(`Title is required (max ${LIMITS.title} characters)`);
+    if (!title || title.length > FIELD_LIMITS.customTitle) {
+      return badRequest(
+        `Title is required (max ${FIELD_LIMITS.customTitle} characters)`,
+      );
     }
 
     if (!UPLOADED_IMAGE_PATTERN.test(img)) {
       return badRequest("A valid uploaded sketch is required");
     }
 
-    if (!timber || timber.length > LIMITS.timber) {
+    if (!timber || timber.length > FIELD_LIMITS.timber) {
       return badRequest("Timber variety is required");
     }
 
-    if (instructions.length > LIMITS.instructions) {
+    if (instructions.length > FIELD_LIMITS.customDescription) {
       return badRequest(
-        `Instructions are too long (max ${LIMITS.instructions} characters)`,
+        `Instructions are too long (max ${FIELD_LIMITS.customDescription} characters)`,
       );
     }
 
@@ -89,16 +88,15 @@ export async function POST(req: NextRequest) {
     const widthCm = Math.round(width * factor * 100) / 100;
     const heightCm = Math.round(height * factor * 100) / 100;
 
-    if (widthCm > LIMITS.maxSizeCm || heightCm > LIMITS.maxSizeCm) {
-      return badRequest(`Size is too big (max ${LIMITS.maxSizeCm} cm)`);
+    if (widthCm > MAX_SIZE_CM || heightCm > MAX_SIZE_CM) {
+      return badRequest(`Size is too big (max ${MAX_SIZE_CM} cm)`);
     }
 
     connection = await getDatabaseConnection();
 
-    // Start transaction
     await connection.query("BEGIN");
+    transactionStarted = true;
 
-    // 1. Insert into CUSTOMIZED_ORDERS
     const customOrderResult = await connection.query(
       `INSERT INTO customized_orders (
         user_id,
@@ -108,29 +106,34 @@ export async function POST(req: NextRequest) {
         width,
         timber,
         customized_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      ) VALUES ($1::uuid, $2, $3, $4, $5, $6, 'pending')
       RETURNING customized_id`,
       [session.user_id, title, instructions || null, heightCm, widthCm, timber],
     );
 
-    const customizedId = customOrderResult.rows[0].customized_id;
+    const customizedId = asUuid(customOrderResult.rows[0].customized_id);
 
-    // 2. Insert sketch into CUSTOM_GALLERY
     await connection.query(
       `INSERT INTO custom_gallery (
         customized_id,
         image_url,
         sort_order
-      ) VALUES ($1, $2, 1)`,
+      ) VALUES ($1::uuid, $2, 1)`,
       [customizedId, img],
     );
 
     await connection.query("COMMIT");
+    transactionStarted = false;
 
     return NextResponse.json({ message: "Request created" }, { status: 201 });
   } catch (err: any) {
-    if (connection) {
-      await connection.query("ROLLBACK");
+    if (connection && transactionStarted) {
+      try {
+        await connection.query("ROLLBACK");
+      } catch {
+        /* ignore */
+      }
+      transactionStarted = false;
     }
     console.error("Customized POST Error:", err);
     return NextResponse.json(
@@ -156,6 +159,7 @@ export async function GET() {
 
     const query = `
       SELECT
+        c.customized_id,
         c.req_title,
         c.customized_status,
         c.quoted_price,
@@ -164,7 +168,7 @@ export async function GET() {
       FROM customized_orders c
       LEFT JOIN custom_gallery g 
         ON c.customized_id = g.customized_id AND g.sort_order = 1
-      WHERE c.user_id = $1
+      WHERE c.user_id = $1::uuid
       ORDER BY c.requested_at DESC
     `;
 
@@ -174,7 +178,16 @@ export async function GET() {
 
     const rows = result.rows || [];
 
-    return NextResponse.json({ count: rows.length, orders: rows });
+    const orders = rows.map((row) => ({
+      id: asUuid(row.customized_id),
+      title: row.req_title,
+      status: row.customized_status,
+      quotedPrice: asMoneyOrNull(row.quoted_price),
+      description: row.req_description,
+      image: row.custom_image,
+    }));
+
+    return NextResponse.json({ count: orders.length, orders });
   } catch (err: any) {
     console.error("Customized GET Error:", err);
     return NextResponse.json(

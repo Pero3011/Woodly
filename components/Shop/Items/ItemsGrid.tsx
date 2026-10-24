@@ -4,9 +4,18 @@ import ItemsCards from "./ItemsCards";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
+interface Product {
+  prod_id: string;
+  prod_img: string;
+  prod_category: string;
+  prod_price: number;
+  prod_name: string;
+  prod_description: string;
+}
+
 interface Display {
   DisplaySetting: "grid-cols-3" | "grid-rows-3";
-  products: any[];
+  products: Product[];
 }
 
 export default function ItemsGrid({ DisplaySetting, products }: Display) {
@@ -25,7 +34,7 @@ export default function ItemsGrid({ DisplaySetting, products }: Display) {
   return (
     <div>
       <div className={`grid grid-cols-1 ${gridClass} gap-6`}>
-        {products.map((item: any, i: number) => (
+        {products.map((item, i) => (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}

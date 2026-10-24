@@ -36,7 +36,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user) {
       const savedRaw = localStorage.getItem(user.id);
-      console.log(savedRaw)
 
       if (savedRaw) {
         try {
@@ -83,13 +82,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (newItem: Omit<CartItem, "quantity">) => {
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === newItem.id);
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.id === newItem.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        );
+      if (prevCart.some((item) => item.id === newItem.id)) {
+        return prevCart;
       }
 
       return [...prevCart, { ...newItem, quantity: 1 }];
@@ -105,8 +99,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(id);
       return;
     }
+    // order_items.unit_price is always one line (qty 1) per product
     setCart((prevCart) =>
-      prevCart.map((item) => (item.id === id ? { ...item, quantity } : item)),
+      prevCart.map((item) =>
+        item.id === id ? { ...item, quantity: 1 } : item,
+      ),
     );
   };
 
