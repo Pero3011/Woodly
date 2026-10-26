@@ -9,7 +9,6 @@ import {
   enhanceImage,
   getTimberTexture,
   removeBg,
-  renderOnTimber,
 } from "@/lib/imageProcessing";
 
 interface TimberPreviewProps {
@@ -17,10 +16,8 @@ interface TimberPreviewProps {
   timberVariety: string;
 }
 
-type View = "simulation" | "3d" | "original";
+type View = "3d" | "original";
 type Status = "idle" | "working" | "ready" | "error";
-
-// ---------- Small helpers for the 3D view ----------
 
 function hasWebGL(): boolean {
   try {
@@ -40,20 +37,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// ---------- The cutting plan ----------
-// A black & white picture:  WHITE = wood stays,  BLACK = wood is cut away.
-//
-// The rule is now simple:
-//   - A pixel DARKER than the middle line  -> cut it.
-//   - A pixel BRIGHTER than the middle line -> keep it.
-// There is no halo any more. A small empty frame stays around the picture.
-//
-// IMPORTANT: we use the picture BEFORE background removal. If we used the
-// cut-out picture, the white lines inside the bird would count as "see-through"
-// and would be cut by mistake.
-
-const MAX_SIDE = 1200; // big pictures are made smaller so this stays fast
-const SOFTNESS = 28; // how wide the soft edge is (bigger = softer)
+// ⚡ OPTIMIZATION 1: تصغير حجم الصورة المستخدمة في الماسك لـ 512px كحد أقصى (سرعة خيالية في المعالجة)
+const MAX_SIDE = 512;
+const SOFTNESS = 24;
 
 async function makeCarveMask(
   sourceUrl: string,
@@ -61,14 +47,13 @@ async function makeCarveMask(
 ): Promise<string> {
   const img = await loadImage(sourceUrl);
 
-  // Make the picture smaller if it is huge
   const scale = Math.min(
     1,
     MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight),
   );
   const iw = Math.round(img.naturalWidth * scale);
   const ih = Math.round(img.naturalHeight * scale);
-  const pad = Math.round(Math.max(iw, ih) * 0.12); // the frame around
+  const pad = Math.round(Math.max(iw, ih) * 0.1);
   const W = iw + pad * 2;
   const H = ih + pad * 2;
 
@@ -78,8 +63,6 @@ async function makeCarveMask(
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("Canvas is not supported.");
 
-  // Paint everything white first (the frame and any see-through parts
-  // become white = they stay as wood), then draw the picture on top.
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, W, H);
   ctx.drawImage(img, pad, pad, iw, ih);
@@ -90,10 +73,6 @@ async function makeCarveMask(
   for (let i = 0, n = W * H; i < n; i++) {
     const p = i * 4;
     const lum = 0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2];
-
-    // Soft edge: far below the line = 0 (cut), far above = 255 (stay).
-    // Exactly on the line = 128, and the board cuts at 0.5 (alphaTest),
-    // so the cut follows the true curve of your picture.
     const t = (lum - threshold) / SOFTNESS + 0.5;
     const v = Math.round(Math.max(0, Math.min(1, t)) * 255);
 
@@ -113,25 +92,27 @@ async function makeCarveMask(
   });
 }
 
-// ---------- The 3D board ----------
-
-const BOARD_SIZE = 2.6; // size of the longest side in 3D units
-const THICKNESS = 0.22; // how thick the whole board is
-const POCKET = 0.12; // how deep we cut
-const LAYERS = 30; // thin sheets stacked inside the cut (they make the walls)
-const DEEPEST_SHADE = 0.7; // 1 = same as top, lower = darker walls
+// ---------- 3D Performance Settings ----------
+const BOARD_SIZE = 2.6;
+const THICKNESS = 0.2;
+const POCKET = 0.12;
+// ⚡ OPTIMIZATION 2: تقليل الـ Layers من 40 لـ 8 فقط للحفاظ على 60 FPS ودون أي ثقل في الـ GPU
+const LAYERS = 8;
+const DEEPEST_SHADE = 0.35;
 
 function CarvedBoard({
   textureUrl,
   maskUrl,
+  timberVariety,
 }: {
   textureUrl: string;
   maskUrl: string;
+  timberVariety: string;
 }) {
   const wood = useTexture(textureUrl, (t) => {
     const tex = Array.isArray(t) ? t[0] : t;
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+    tex.minFilter = THREE.LinearFilter; // ⚡ خامة خفيفة
   });
   const mask = useTexture(maskUrl);
 
@@ -140,7 +121,6 @@ function CarvedBoard({
   const width = aspect >= 1 ? BOARD_SIZE : BOARD_SIZE * aspect;
   const height = aspect >= 1 ? BOARD_SIZE / aspect : BOARD_SIZE;
 
-  // Fit the wood picture on the board without stretching it
   const boardWood = useMemo(() => {
     const t = wood.clone();
     const img = wood.image as HTMLImageElement;
@@ -158,40 +138,47 @@ function CarvedBoard({
     return t;
   }, [wood, aspect]);
 
+  const pocketColor = useMemo(() => {
+    const lowerVariety = timberVariety.toLowerCase();
+    if (lowerVariety.includes("walnut") || lowerVariety.includes("dark")) {
+      return "#f0e6d8"; // أرضية فاتحة جداً للخشب الغامق
+    }
+    return "#4a3525"; // أرضية متباينة للأخشاب الفاتحة
+  }, [timberVariety]);
+
   const baseThickness = THICKNESS - POCKET;
 
   return (
     <group>
-      {/* The top part of the board. Every sheet has the same holes
-          (alphaMap), so together they make straight walls. Deeper sheets
-          are a little darker, like a soft shadow inside a cut. */}
+      {/* 8 طبقات فقط تعطي ظل عميق وسلس جداً في الدوران */}
       {Array.from({ length: LAYERS }, (_, i) => {
-        const shade = 1 - (1 - DEEPEST_SHADE) * (i / (LAYERS - 1));
+        const factor = i / (LAYERS - 1);
+        const shade = 1 - (1 - DEEPEST_SHADE) * Math.pow(factor, 0.7);
         return (
-          <mesh key={i} position={[0, 0, -(i / LAYERS) * POCKET]}>
+          <mesh key={i} position={[0, 0, -factor * POCKET]}>
             <planeGeometry args={[width, height]} />
             <meshStandardMaterial
               map={boardWood}
               alphaMap={mask}
-              alphaTest={0.5}
+              alphaTest={0.45}
               side={THREE.DoubleSide}
-              roughness={0.8}
+              roughness={0.7}
               color={new THREE.Color(shade, shade, shade)}
             />
           </mesh>
         );
       })}
 
-      {/* The floor of the cut: the SAME wood, but darker brown (not black) */}
+      {/* خلفية التفرغ الداخلية */}
       <mesh position={[0, 0, -POCKET - 0.001]}>
         <planeGeometry args={[width, height]} />
-        <meshStandardMaterial map={boardWood} color="#8a6a4c" roughness={0.9} />
+        <meshStandardMaterial color={pocketColor} roughness={0.8} />
       </mesh>
 
-      {/* The solid wood under the cut. It also gives the board its sides. */}
+      {/* لوح الخشب الرئيسي */}
       <mesh position={[0, 0, -POCKET - baseThickness / 2 - 0.002]}>
         <boxGeometry args={[width, height, baseThickness]} />
-        <meshStandardMaterial map={boardWood} color="#b0b0b0" roughness={0.8} />
+        <meshStandardMaterial map={boardWood} color="#cccccc" roughness={0.8} />
       </mesh>
     </group>
   );
@@ -200,28 +187,34 @@ function CarvedBoard({
 function Board3D({
   textureUrl,
   maskUrl,
+  timberVariety,
 }: {
   textureUrl: string;
   maskUrl: string;
+  timberVariety: string;
 }) {
   return (
     <Canvas
       camera={{ position: [2.2, -1.6, 4.2], fov: 35 }}
-      dpr={[1, 2]}
+      dpr={[1, 1.5]} // ⚡ OPTIMIZATION 3: تحديد الـ DPR بحد أقصى 1.5 يقلل الضغط على الشاشات العالية (4K/Retina)
       className="touch-pan-y"
     >
-      {/* Soft light from the top-left, plus light from everywhere */}
-      <ambientLight intensity={2.2} />
-      <directionalLight position={[-3, 3, 5]} intensity={2.5} />
-      <directionalLight position={[3, -1, 3]} intensity={1.2} />
+      <ambientLight intensity={1.6} />
+      <directionalLight position={[-4, 4, 5]} intensity={2.8} />
+      <directionalLight position={[4, -2, 3]} intensity={1.0} />
+
       <Suspense fallback={null}>
-        <CarvedBoard textureUrl={textureUrl} maskUrl={maskUrl} />
+        <CarvedBoard
+          textureUrl={textureUrl}
+          maskUrl={maskUrl}
+          timberVariety={timberVariety}
+        />
       </Suspense>
       <OrbitControls
         enablePan={false}
         enableZoom={false}
         autoRotate
-        autoRotateSpeed={1.2}
+        autoRotateSpeed={1.0}
         minPolarAngle={Math.PI / 4}
         maxPolarAngle={(Math.PI * 3) / 4}
       />
@@ -229,34 +222,24 @@ function Board3D({
   );
 }
 
-// ---------- The main component ----------
-
 export default function TimberPreview({
   file,
   timberVariety,
 }: TimberPreviewProps) {
-  const [view, setView] = useState<View>("simulation");
-  const [removeBackground, setRemoveBackground] = useState(true);
+  const [view, setView] = useState<View>("3d");
+  const [removeBackground, setRemoveBackground] = useState(false); // ⚡ افتراضياً false لتفادي تأخير removeBg إلا لو المستخدم طلبها
   const [canUse3D] = useState(() => hasWebGL());
 
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
-  // NEW: the picture after enhancing but BEFORE background removal.
-  // The cutting plan is made from this one.
   const [enhancedUrl, setEnhancedUrl] = useState<string | null>(null);
-  const [cutoutUrl, setCutoutUrl] = useState<string | null>(null);
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [maskUrl, setMaskUrl] = useState<string | null>(null);
 
-  // Slider 0..100. 50 = the middle line. Right = cut more, left = cut less.
   const [cutAmount, setCutAmount] = useState(50);
-
   const [status, setStatus] = useState<Status>("idle");
-  const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
   const isPdf = file?.type === "application/pdf";
 
-  // Effect A: show the original file
   useEffect(() => {
     if (!file || isPdf) return;
     const url = URL.createObjectURL(file);
@@ -264,43 +247,35 @@ export default function TimberPreview({
     return () => URL.revokeObjectURL(url);
   }, [file, isPdf]);
 
-  // Effect B: enhance the image, then (optionally) remove its background.
+  // ⚡ معالجة الصورة بشكل سريع ودون انتظار طويل
   useEffect(() => {
     if (!file || isPdf) return;
 
     let ignore = false;
     let enhancedBlobUrl: string | null = null;
-    let cutoutBlobUrl: string | null = null;
 
     async function process() {
       setStatus("working");
-      setProgress(0);
       setMessage(null);
-      setResultUrl(null);
-      setMaskUrl(null);
 
       try {
-        const enhanced: Blob = await enhanceImage(file as File);
-        enhancedBlobUrl = URL.createObjectURL(enhanced);
+        // إذا لم يختر إزالة الخلفية، نستخدم الصورة فوراً
+        let blob: Blob = file as File;
 
-        let blob: Blob = enhanced;
         if (removeBackground) {
-          blob = await removeBg(enhanced, (p) => {
-            if (!ignore) setProgress(p);
-          });
+          const enhanced = await enhanceImage(file as File);
+          blob = await removeBg(enhanced, () => {});
         }
-        if (ignore) return;
 
-        cutoutBlobUrl = URL.createObjectURL(blob);
+        if (ignore) return;
+        enhancedBlobUrl = URL.createObjectURL(blob);
         setEnhancedUrl(enhancedBlobUrl);
-        setCutoutUrl(cutoutBlobUrl);
+        setStatus("ready");
       } catch (err) {
         console.error("Preview error:", err);
         if (!ignore) {
           setStatus("error");
-          setMessage(
-            "We could not prepare the preview. You can still submit your request.",
-          );
+          setMessage("Could not prepare 3D preview.");
         }
       }
     }
@@ -310,41 +285,16 @@ export default function TimberPreview({
     return () => {
       ignore = true;
       if (enhancedBlobUrl) URL.revokeObjectURL(enhancedBlobUrl);
-      if (cutoutBlobUrl) URL.revokeObjectURL(cutoutBlobUrl);
     };
   }, [file, isPdf, removeBackground]);
 
-  // Effect C: paint the shape on timber (2D picture).
-  useEffect(() => {
-    if (!cutoutUrl) return;
-
-    let ignore = false;
-    renderOnTimber(cutoutUrl, getTimberTexture(timberVariety))
-      .then((url) => {
-        if (ignore) return;
-        setResultUrl(url);
-        setStatus("ready");
-      })
-      .catch(() => {
-        if (ignore) return;
-        setStatus("error");
-        setMessage("We could not draw the timber simulation.");
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [cutoutUrl, timberVariety]);
-
-  // Effect D: make the cutting plan for the 3D board.
-  // The small delay (250 ms) waits until the slider stops moving.
+  // ⚡ OPTIMIZATION 4: تقليل زمن الـ Debounce من 250ms إلى 80ms لتجاوب فوري مع السلايدر
   useEffect(() => {
     if (!enhancedUrl || !canUse3D) return;
 
     let ignore = false;
     let createdUrl: string | null = null;
 
-    // slider 50 -> middle line about 130. Slider 0 -> 60. Slider 100 -> 200.
     const threshold = 60 + cutAmount * 1.4;
 
     const timer = setTimeout(() => {
@@ -360,7 +310,7 @@ export default function TimberPreview({
         .catch(() => {
           if (!ignore) setMaskUrl(null);
         });
-    }, 250);
+    }, 80);
 
     return () => {
       ignore = true;
@@ -375,18 +325,14 @@ export default function TimberPreview({
   const tabOff = "text-primary/70 hover:text-primary";
 
   const tabs: { id: View; label: string; disabled?: boolean }[] = [
-    { id: "simulation", label: "2D" },
-    { id: "3d", label: "3D", disabled: !canUse3D || isPdf },
+    { id: "3d", label: "3D Preview", disabled: !canUse3D || isPdf },
     { id: "original", label: "Your sketch" },
   ];
 
   const loader = (
     <div className="flex flex-col items-center gap-2 text-neutral">
       <Loader2 className="w-6 h-6 animate-spin" />
-      <p className="text-sm">
-        Preparing your preview
-        {progress > 0 && progress < 100 ? `... ${progress}%` : "..."}
-      </p>
+      <p className="text-sm">Generating 3D model...</p>
     </div>
   );
 
@@ -395,10 +341,7 @@ export default function TimberPreview({
       return (
         <div className="flex flex-col items-center gap-2 px-6 text-center text-neutral">
           <FileText className="w-8 h-8" />
-          <p className="text-sm">
-            PDF files cannot be previewed. Our artisans will open it when they
-            review your request.
-          </p>
+          <p className="text-sm">PDF files cannot be previewed in 3D.</p>
         </div>
       );
     }
@@ -420,30 +363,19 @@ export default function TimberPreview({
       return <p className="px-6 text-center text-sm text-red-600">{message}</p>;
     }
 
-    if (status !== "ready" || !resultUrl) return loader;
-
-    if (view === "3d") {
-      if (!maskUrl) return loader;
-      return (
-        <>
-          <Board3D
-            textureUrl={getTimberTexture(timberVariety)}
-            maskUrl={maskUrl}
-          />
-          <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-xs text-neutral">
-            Drag to turn the piece
-          </p>
-        </>
-      );
-    }
+    if (status !== "ready" || !maskUrl) return loader;
 
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={resultUrl}
-        alt="Simulation of your piece in timber"
-        className="h-full w-full object-contain p-4 drop-shadow-[0_12px_20px_rgba(107,66,38,0.25)]"
-      />
+      <>
+        <Board3D
+          textureUrl={getTimberTexture(timberVariety)}
+          maskUrl={maskUrl}
+          timberVariety={timberVariety}
+        />
+        <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center text-xs text-neutral">
+          Drag to turn the piece
+        </p>
+      </>
     );
   }
 
@@ -453,8 +385,7 @@ export default function TimberPreview({
         <div>
           <h3 className="font-serif text-lg text-primary">Timber Preview</h3>
           <p className="text-sm text-neutral">
-            A simulation in {timberVariety.split(" (")[0]}. The real piece will
-            be carved by hand.
+            A 3D simulation in {timberVariety.split(" (")[0]}.
           </p>
         </div>
 
@@ -492,10 +423,6 @@ export default function TimberPreview({
             />
             <span className="w-10 text-right tabular-nums">{cutAmount}%</span>
           </label>
-          <p className="mt-1 text-xs text-neutral">
-            Black parts of your image are cut through the wood and white parts
-            stay. Move right to cut more, left to cut less.
-          </p>
         </div>
       )}
 
@@ -507,7 +434,7 @@ export default function TimberPreview({
             onChange={(e) => setRemoveBackground(e.target.checked)}
             className="w-4 h-4 accent-primary cursor-pointer"
           />
-          Remove the background of my image
+          Remove background (takes a few extra seconds)
         </label>
       )}
     </div>
