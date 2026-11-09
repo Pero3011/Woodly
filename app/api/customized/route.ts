@@ -2,11 +2,8 @@ import { getSession } from "@/lib/auth";
 import { getDatabaseConnection } from "@/lib/db";
 import { FIELD_LIMITS } from "@/lib/fieldLimits";
 import { asMoneyOrNull, asUuid } from "@/lib/pg";
+import { isUploadedSketchUrl } from "@/lib/uploadRules";
 import { NextRequest, NextResponse } from "next/server";
-
-// The image path must look exactly like what the upload route makes
-const UPLOADED_IMAGE_PATTERN =
-  /^\/uploads\/sketches\/[0-9a-f-]{36}\.(png|jpg|pdf)$/i;
 
 const MAX_SIZE_CM = 1000;
 
@@ -62,7 +59,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!UPLOADED_IMAGE_PATTERN.test(img)) {
+    if (!isUploadedSketchUrl(img)) {
       return badRequest("A valid uploaded sketch is required");
     }
 

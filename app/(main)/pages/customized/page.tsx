@@ -13,6 +13,8 @@ import PieceSpecifications, {
 } from "@/components/Customized/PieceSpecifications";
 import ReviewStep from "@/components/Customized/ReviewStep";
 import RequestsPanel from "@/components/Customized/RequestsPanel";
+import { sketchBlobPathname } from "@/lib/uploadRules";
+import { upload } from "@vercel/blob/client";
 
 const DEFAULT_SPEC: PieceSpec = {
   title: "",
@@ -114,17 +116,17 @@ export default function CustomizePage() {
       let img = uploadedPath;
 
       if (!img) {
-        const formData = new FormData();
-        formData.append("sketch", sketchFile);
+        const blob = await upload(
+          sketchBlobPathname(sketchFile),
+          sketchFile,
+          {
+            access: "public",
+            handleUploadUrl: "/api/customized/upload",
+            multipart: true,
+          },
+        );
 
-        const uploadRes = await fetch("/api/customized/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!uploadRes.ok) throw new Error(await readError(uploadRes));
-
-        img = (await uploadRes.json()).path as string;
+        img = blob.url;
         setUploadedPath(img);
       }
 

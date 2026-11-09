@@ -59,7 +59,7 @@ export default function RequestsPanel() {
               >
                 <div className="flex items-start gap-3">
                   <div className="relative w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
-                    {req.image ? (
+                    {req.image && !req.image.toLowerCase().endsWith(".pdf") ? (
                       <Image
                         src={req.image}
                         alt="Custom sketch"
